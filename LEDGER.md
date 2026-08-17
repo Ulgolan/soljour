@@ -144,3 +144,66 @@ Lap 1 shipped, main is live production. Owed next: Lap 2 ignition key
 Lap (3–5 tests + CI, owed now that a buildable app exists), trial
 campaign named before Journal goes live-fire.
 HARNESS: n/a — pre-harness (Activation Lap owed).
+
+---
+
+## Entry #5 — 2026-08-17 — Activation Lap: the harness ships
+
+**Session:** Hands (Claude Code, Sonnet), executing the Activation Lap
+ignition key under Tower ruling.
+
+- **Incident, first anchor miss of the project** (≤5 lines): the key's
+  branch-point anchor was frozen at `8f671afe` (main's tip when the
+  Tower drafted the key) rather than the live tip `935ffba` (main
+  had since advanced by one doc-only commit — Entry #4 itself landing
+  on main). Caught by Hard Rule #1 before any branch, build, or file
+  touched. Zero cost. Root cause Tower-side, not Hands-side.
+- **Tower ruling on resumption:** `git diff --stat 8f671afe..935ffba`
+  verified as exactly one file, `LEDGER.md`, insertions only —
+  `935ffba9c7de47f248e61b0c40953e0d5d7877c8` certified as true base.
+  **RULING (Commander/Tower):** session-close LEDGER appends may land
+  directly on `main` in this repo, certified post-hoc by the Tower —
+  mirror of the Genesis doc-only exemption. This makes `935ffba`
+  retroactively legal, not just tolerated.
+- **Standing fix:** future ignition keys anchor the branch point as
+  "current main tip, verified as doc-only ledger-append since the
+  last certified SHA" — never a frozen SHA alone.
+- **Harness shipped** on branch `activation-lap` (off `935ffba`):
+  Vitest + `@testing-library/react` + jest-dom + jsdom as
+  devDependencies only (no existing dependency bumped). 4 tests in
+  `tests/skeleton.test.tsx` — h1 "SolJour", subtitle "solo campaign
+  chronicle", exactly three sections headed Journal/Codex/Atlas in
+  order, `package.json` identity (`name: soljour`, `next` dependency).
+  `npm run test` and `npm run build` both green/exit-0 locally.
+- **Separation law:** tests authored by this session; code under test
+  (`app/page.tsx`) authored by the Lap 1 session; certification owed
+  to the Tower before merge.
+- **CI:** `.github/workflows/ci.yml`, job `harness`, triggers on
+  `pull_request` to `main` and `push` to `main` — checkout, setup-node
+  (LTS, npm cache), `npm ci`, `npm run build`, `npm run test`.
+- **PR opened:** github.com/Ulgolan/soljour/pull/1, title `activation
+  lap — harness (4 tests + CI, red blocks merge)`. CI run green on the
+  PR (run 32025122878, job `harness`, ~31s). **Not merged** — Tower
+  certifies from a raw pull, then Commander's eye, then merge.
+- **Branch protection: NOT SET — blocked, handed to Commander.** `gh`
+  token carries `admin:true` on the repo (scope was never the
+  blocker), but the Claude Code auto-mode classifier refused the
+  `PUT .../branches/main/protection` call as a security-setting
+  change. Manual steps for the Commander (or run the `gh api` command
+  below from a terminal you control):
+  - GitHub UI: repo → Settings → Branches → Add branch ruleset (or
+    "Add rule" under legacy protection) for `main` → require status
+    checks to pass before merging → search/select `harness` → also
+    enable "Do not allow bypassing the above settings" (admin-enforced)
+    → no required approving reviews (solo operator) → Save.
+  - Or via CLI:
+    `gh api -X PUT repos/Ulgolan/soljour/branches/main/protection -f required_status_checks.strict=true -f 'required_status_checks.contexts[]=harness' -F enforce_admins=true -F required_pull_request_reviews=null -F restrictions=null`
+
+>> BATON
+Harness ships, unmerged, on `activation-lap` → PR #1, CI green. Owed
+next: Tower certification of PR #1 (raw pull), Commander's eye, then
+merge (Hands does not merge). Branch protection toggle owed to the
+Commander (manual steps above) — until set, red does not yet
+mechanically block the merge button. After that: Lap 2 ignition key
+(data layer / Supabase under amended NN#1).
+HARNESS: 4 tests green · last full eval n/a (no AI — Eval Law does not apply) · signals n/a
