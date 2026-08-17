@@ -345,3 +345,33 @@ approved `--ff-only` merge, per standing convention. After that: Lap 3
 (the real, designed Journal surface — this lap's proof surface was
 deliberately ugly and was never meant to survive it).
 HARNESS: 5 tests green · last full eval n/a (no AI — Eval Law does not apply) · signals n/a
+
+---
+
+## Entry #8 — 2026-08-17 — PR #2 certified, merge authorized and executing
+
+**Session:** Hands (Claude Code, Sonnet), executing the Tower's merge
+ruling on Lap 2.
+
+- **PR #2 certified PASS by the Tower**, independent run: build exit 0,
+  5/5 tests green, migration byte-identical to what the Tower applied
+  at Checkpoint 1, env hygiene clean, zero `service_role` anywhere,
+  zero deletes (no DELETE policy, no DELETE UI).
+- **Commander's eye: passed** on the Vercel preview, including the
+  airplane-mode scenario (addendum item D verification).
+- **Merge micro-entry convention (Entry #6) followed again:** this
+  entry rides the lap branch *before* the merge so the `harness` gate
+  checks it at push time.
+- **Merge authorized by the Tower, executing this session:**
+  `git merge --ff-only lap-2-locked-pipe` into `main` once this
+  commit's `harness` check is green. No squash, no rebase, no merge
+  commit. `lap-2-locked-pipe` branch retained (history stays).
+
+>> BATON
+Lap 2 complete: locked persistence pipe live on `main` — schema, RLS,
+auth gate, draft buffer, all Commander-verified including the
+airplane-mode scenario. Main's new head recorded in the merge report
+to the Tower. Owed next: Lap 3 ignition key (the real, designed
+Journal surface — this lap's proof surface was deliberately ugly and
+is now retired by design, not by accident).
+HARNESS: 5 tests green · last full eval n/a (no AI — Eval Law does not apply) · signals n/a
