@@ -115,3 +115,32 @@ auth for a future lap to link/deploy. Next: Tower certifies (raw
 GitHub pull) before any merge to main; then stack decision detail
 (data layer / Supabase, satisfying amended NN#1) is Lap 2+ territory.
 HARNESS: n/a — pre-harness (Activation Lap owed).
+
+---
+
+## Entry #4 — 2026-08-17 — Lap 1 merged: main is live production
+**Session:** Hands (Claude Code, Sonnet), executing the merge micro-key
+under Tower certification + Commander's eye.
+
+- **Lap 1 certified by the Tower: PASS.** Trinity byte-identical at
+  `ca97eb6`; branch diff clean; zero forbidden dependencies; build
+  independently corroborated.
+- One MINOR finding, T2, caged in backlog: `next/font/google` fetches
+  fonts at build time (external build dependency); self-host during a
+  future design pass.
+- Repo flipped **PUBLIC** by the Commander (2026-08-17) to give the
+  Tower raw-pull certification access — standing regime from now on.
+- Vercel connected (project: soljour). Empty commit `8f671afe`
+  triggered the branch preview; Commander's eye passed on the preview.
+- **Merge authorized by the Tower, executed this session:**
+  `git merge --ff-only lap-1-skeleton` into `main`. No squash, no
+  rebase, no merge commit — clean fast-forward. `lap-1-skeleton`
+  branch retained (history stays).
+- Main's new head: `8f671afead46eddce132f030c81286382fa8f679`.
+
+>> BATON
+Lap 1 shipped, main is live production. Owed next: Lap 2 ignition key
+(data layer / Supabase under amended NN#1 — Tower drafts), Activation
+Lap (3–5 tests + CI, owed now that a buildable app exists), trial
+campaign named before Journal goes live-fire.
+HARNESS: n/a — pre-harness (Activation Lap owed).
