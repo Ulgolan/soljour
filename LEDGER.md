@@ -245,3 +245,103 @@ Main's new head recorded in the merge report to the Tower. Owed next:
 Lap 2 ignition key (data layer / Supabase under amended NN#1 — Tower
 drafts).
 HARNESS: 4 tests green · last full eval n/a (no AI — Eval Law does not apply) · signals n/a
+
+---
+
+## Entry #7 — 2026-08-17 — Lap 2: locked pipe (schema + auth gate + draft buffer)
+
+**Session:** Hands (Claude Code, Sonnet), executing Ignition Key #2
+plus the Tower Addendum, on branch `lap-2-locked-pipe` (off main tip
+`226636b`; branch-point law verified empty, all 3 anchors landed
+exactly once).
+
+- **Checkpoint 1 (migration SQL): PASS.** `supabase/migrations/
+  0001_campaigns_entries.sql` reported verbatim, certified and applied
+  live by the Tower to project `ltcuhxvshypigrvnxmdl`. Tower-verified:
+  `campaigns` + `entries` exist, RLS on both, FK `entries.campaign_id`
+  → `campaigns.id` present, schema matches the in-repo file exactly.
+  One MINOR caged for a future lap (T2): `updated_at` has no
+  auto-update trigger — irrelevant while the UI only inserts.
+- **Dependency + env:** `@supabase/supabase-js` (^2) added.
+  `.env.local` created (gitignored, verified absent from `git status`)
+  with the two provisioned publishable values. `.env.example`
+  committed with names only; `.gitignore` gained a `!.env.example`
+  exception per addendum item C.
+- **Auth gate + proof surface, built at root `/`** (not a side route):
+  `lib/supabaseClient.ts` (browser client), `components/LoginForm.tsx`,
+  `components/AuthGate.tsx` (session check via `getSession` +
+  `onAuthStateChange`, no router redirect — renders the login form or
+  its children directly), `app/login/page.tsx` (standalone route for
+  direct navigation), `components/DraftComposer.tsx` (draft buffer,
+  ref-exposed `getContent`/`clear`, ≤1s-debounced localStorage write
+  keyed `soljour:draft:<campaignId>`, restores on mount),
+  `components/ProofSurface.tsx` (first-load campaign creator; composer
+  + Save entry + newest-first plain-text list; failed save keeps the
+  draft and shows an honest "not synced — kept locally" state with a
+  retry button; visible "sign out" link). No DELETE anywhere in the UI.
+- **Mid-lap contradiction, ruled by the Commander standing in as
+  Tower (2026-08-17):** step 5 ("root layout/page: unauthenticated →
+  /login; authenticated → proof surface") and steps 8–9's arithmetic
+  ("+3 tests → 7 total," "harness runs 7/7 green") cannot both hold —
+  the ignition key's own math assumed Lap 1's walking skeleton
+  (h1 + subtitle + Journal/Codex/Atlas cards, `tests/skeleton.test.tsx`,
+  4 tests) survives a step that orders its replacement. Flagged via a
+  stop-and-report rather than guessed, per the executor laws (never
+  guess; log the discrepancy and report). **Ruling: Option 1 — replace
+  root.** Root belongs to the app (cold-open-to-writing; a decorative
+  lobby is an honest-facades smell). **Test doctrine set for the
+  record:** the harness photographs certified current behavior; a
+  certified lap that changes that behavior retakes the photograph —
+  it does not carry the old photograph forward as a "+" on top of new
+  behavior. **Retired with the feature:** the 3 skeleton-UI assertions
+  (h1 "SolJour" alone, subtitle "solo campaign chronicle", exactly
+  three Journal/Codex/Atlas sections) — all false of the new root page.
+  **Kept:** the package.json identity assertion (still true, page-
+  independent). This is Tower arithmetic error #2 logged against this
+  project (Entry #5 logged the first, on the `gh api` protection call).
+- **Harness (Tower-amended count — 5, not 7):** `tests/skeleton.test.tsx`
+  (package.json identity, kept), `tests/auth-gate.test.tsx` (mocked
+  no-session renders the login form; mocked session renders the proof
+  surface — addendum item B: the gate's rendering decision is asserted
+  directly, no `next/navigation` mock, because `AuthGate` renders
+  inline rather than redirecting), `tests/draft-composer.test.tsx`
+  (persists to localStorage, restores on remount, jsdom, fake timers),
+  `tests/proof-surface.test.tsx` (failed save keeps the draft, shows
+  the unsynced state; Supabase client fully mocked, no network).
+  5/5 green locally. `npm run build` exit 0, `npm run lint` clean.
+- **Toolchain snag, fixed, unrelated to app code:** Node 25's built-in
+  `localStorage` global shadows jsdom's in this Vitest environment
+  (`window.localStorage.getItem is not a function`). Fixed with a
+  small in-memory `Storage` shim installed in `tests/setup.ts`
+  (`vitest.config.mts` gained `setupFiles` + a `@` → repo-root
+  `resolve.alias`, since Vitest doesn't read `tsconfig.json` paths on
+  its own). No production code touched by this fix.
+- **CI env (addendum item A):** job-level `env:` added to the
+  `harness` job in `.github/workflows/ci.yml` with the two publishable
+  values — client-safe by design, needed because `next build`
+  server-renders the client-component tree once and the runner has no
+  `.env.local`.
+- **ff-merge convention, reconfirmed:** Entry #6's "no merge commit"
+  held — the Tower certified from a raw pull, the Commander approved
+  the merge prompts in-session, the Hands executed `git merge
+  --ff-only`. Standing convention: merges are Commander-approved
+  in-session; the Hands never merges unprompted. This lap follows the
+  same shape — PR opened, not merged.
+- **Commander-at-keyboard verification (addendum item D): HANDED OFF,
+  outcome pending.** The Hands built the mocked/unit-level proof (the
+  failed-save test above) but the *live* proof — log in as the
+  Commander, type → reload → draft survives, Save → row exists,
+  airplane-mode save → honest unsynced state — needs the Commander's
+  own hands and his own credentials, which the Hands never holds or
+  requests. Local steps handed to him in-session (see chat).
+
+>> BATON
+Locked pipe built and pushed on `lap-2-locked-pipe`, PR opened,
+unmerged. Owed next: the Commander's live airplane-mode verification
+(steps handed to him this session); Tower/Commander review of the mid-
+lap root-replacement ruling once they see the diff; then Tower
+certification → Commander's eye on the Vercel preview → Commander-
+approved `--ff-only` merge, per standing convention. After that: Lap 3
+(the real, designed Journal surface — this lap's proof surface was
+deliberately ugly and was never meant to survive it).
+HARNESS: 5 tests green · last full eval n/a (no AI — Eval Law does not apply) · signals n/a
