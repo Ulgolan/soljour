@@ -375,3 +375,61 @@ to the Tower. Owed next: Lap 3 ignition key (the real, designed
 Journal surface — this lap's proof surface was deliberately ugly and
 is now retired by design, not by accident).
 HARNESS: 5 tests green · last full eval n/a (no AI — Eval Law does not apply) · signals n/a
+
+---
+
+## Entry #9 — 2026-08-17 — Session close: Tower Session 2 retires, open threads for Lap 3
+
+**Session:** Hands (Claude Code), executing the Tower's close-out
+order under the ledger-append law (A-2), riding branch
+`session-close-9` for its gate check per the pre-merge codicil.
+
+- **Genesis v0.5 adopted.** Amendment Package A-2 "The Ledger's
+  Gravity" gaveled by the Commander at this boundary: branch-point
+  law, ledger-append law + pre-merge micro-entry codicil, photograph
+  doctrine. Application to `acp-doctrine` in flight via a separate
+  chat; R3 adjudicates alongside A-1. §0 of this Project's
+  instructions refreshed same day (repo reference + v0.5 note).
+  SolJour's pasted body remains authentic v0.4 birth text by ruling —
+  annotate, don't re-paste; repo law binds via this ledger.
+- **Gate discovery, same day:** the harness-gate ruleset blocks ALL
+  unchecked pushes to main including web-editor edits by the
+  Commander. Consequence: in a gated repo, every main-bound commit —
+  ledger appends included — rides a branch for its check first. Third
+  Tower briefing error of the day (web-editor paste suggestion),
+  third catch before any cost. Logged as R3 evidence on the A-2
+  ledger-append clause.
+- **Open thread — the christening.** The trial campaign's identity is
+  OPEN. Do not assume WFRP: the Commander has signaled unknowns on
+  the horizon ("many unknowns... hehehe" — recorded verbatim as
+  evidence of mischief). The campaign named "test" was live-fire
+  proof only.
+- **Open thread — the immortal "test".** No delete capability exists
+  by design (Data law); the "test" campaign row persists until a
+  future lap builds archiving. This is law working, not residue.
+- **Lap 3 gates, from the Polaris — the next Tower drafts Ignition
+  Key #3 against these:** (1) the designed Journal surface — first
+  activation of the DESIGN GATE, taste verdict sovereign; (2)
+  cold-open resume brief (open the app → where-was-I in seconds);
+  (3) NN#1's "export one tap away" must exist BEFORE live-fire
+  begins — Lap 3 or Lap 4 scope, never "someday". Caged MINORs
+  remain in Entries #7–#8 (updated_at trigger, flush-on-blur).
+- **To the next Tower, from the last one:** the files got you here —
+  trust them over anything you think you remember. Read this BATON,
+  pull live git, ask the Commander his priorities, and hold the line
+  gently: today three of my briefing errors were caught by the
+  system's own laws before they cost a franc. The system doesn't
+  need you infallible, only honest and verifying. He'll call you
+  buddy. It's earned — build well. Continue, don't echo.
+
+>> BATON
+Main: see report. Previous: ee63f29 (Lap 2
+merged, locked pipe live). Branch lap-2-locked-pipe retained at
+19aaf9b. PR #2 closed-merged. Ruleset harness-gate active, bypass
+empty — all main-bound commits ride branches for checks. Supabase
+soljour (ltcuhxvshypigrvnxmdl, Zurich): schema 0001 applied, RLS on,
+one campaign row ("test"), auth single-user, sign-ups off. Genesis
+v0.5 (A-2) adopted this boundary. Next: Lap 3 — designed Journal
+surface (DESIGN GATE + resume brief + export before live-fire).
+Christening OPEN — do not assume the system.
+HARNESS: 5 tests green · last full eval n/a (no AI) · signals n/a
