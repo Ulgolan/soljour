@@ -70,3 +70,48 @@ satisfy amended NN#1: local draft buffer + sync) + walking skeleton
 deployed. Journal surface is Lap-priority so the trial clock can start
 early. No build has occurred.
 HARNESS: n/a — pre-repo.
+
+---
+
+## Entry #3 — 2026-08-17 — Lap 1: repo birth + walking skeleton
+**Session:** Hands (Claude Code, Sonnet), executing Ignition Key #1.
+
+- All four anchors verified before start (folder contents; `POLARIS.md`
+  Class: OPERATOR TOOL ×1; `CLAUDE.md` Stop-and-report ×1; `LEDGER.md`
+  Entry #2 ×1). No improvisation needed.
+- **Repo born.** `git init`, trinity committed alone as commit zero:
+  `commit zero — the trinity (POLARIS, CLAUDE, LEDGER)`,
+  SHA `ca97eb6ab67a69921fa919603538fc1f45d75c6d`.
+- **GitHub:** private repo `Ulgolan/soljour` created (`gh repo create`),
+  `main` set as default branch, commit zero pushed.
+- **Stack scaffolded on branch `lap-1-skeleton`:** Next.js (App Router)
+  + TypeScript + Tailwind, coexisting with the trinity at repo root.
+  `create-next-app` refused to run in-place (trinity files read as
+  conflicts), so the scaffold was generated in a scratch dir and
+  merged in — its own generated `CLAUDE.md`/`README.md`/`AGENTS.md`
+  were dropped so the sealed doctrine file was never at risk of being
+  overwritten.
+- Landing page replaced: dark-mode placeholder — "SolJour", subtitle
+  "solo campaign chronicle", three inert sections (Journal · Codex ·
+  Atlas). Verified rendering legibly at a 380px viewport via the
+  in-app browser preview.
+- `npm run build` exits 0. README.md added (5 lines, points to
+  POLARIS.md, states main is production).
+- Skeleton committed: `lap 1 — Next.js walking skeleton (App Router +
+  TypeScript + Tailwind)`, SHA `a616ae2be14a7d951f23e282f4daf455cde3e5ba`.
+  Branch pushed to origin.
+- **Vercel:** CLI not present in this environment (`vercel` command not
+  found). Per the ignition key's stated acceptable exit, stopped at the
+  push — Commander connects the repo via the Vercel dashboard
+  (Import Project → soljour).
+- No merge performed. Main holds only commit zero.
+
+>> BATON
+Lap 1 walking skeleton exists and builds clean on `lap-1-skeleton`,
+unmerged. Repo: github.com/Ulgolan/soljour (private). Commit zero
+`ca97eb6a`, skeleton head `a616ae2b`. Vercel not connected — Commander
+to Import Project in the Vercel dashboard, or provide `vercel` CLI
+auth for a future lap to link/deploy. Next: Tower certifies (raw
+GitHub pull) before any merge to main; then stack decision detail
+(data layer / Supabase, satisfying amended NN#1) is Lap 2+ territory.
+HARNESS: n/a — pre-harness (Activation Lap owed).
