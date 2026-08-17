@@ -526,3 +526,47 @@ RULED (designed Journal surface, cold-open resume brief, minimal
 Ignition Key #3 (designed Journal surface — DESIGN GATE's first
 activation), scoped per this ruling.
 HARNESS: 5 tests green (Session 3 local run at af50196) · last full eval n/a (no AI) · signals n/a
+
+---
+
+## Entry #12 — 2026-08-17 — Incident #2: red harness on main (second firing, same test)
+
+**Session:** Hands (Claude Code), incident lap on branch
+`incident-2-test-races` (off main tip `7a765f1`).
+
+- Timeline: PR #5 (Entry #11, doc-only) merged --ff-only; push-run on
+  main RED — same assertion the deflake (PR #4) claimed fixed. Hands
+  caught it via Entry #10's standing rule on its first live use,
+  stopped, reported. Tower reproduced and diagnosed same session.
+- Root cause (T1, controlled experiments): TWO races, either fatal —
+  (A) mock hands out success/error chains by call order; the insert
+  can consume the success chain → banner never renders; (B)
+  DraftComposer's post-mount hydration can overwrite typed content
+  with "" → early return, no save attempt, no banner. The deflake fix
+  (substring regex) addressed neither; the banner never appears late —
+  it never appears at all.
+- Contributing factors: Session 2's certification located the wrong
+  mechanism; the Tribunal endorsed it; Session 3 restated it in Entry
+  #11 — three-session lineage error, falsified by machine evidence.
+  DraftComposer was never read in either investigation. Same
+  PR-check-green / push-run-red straddle as Incident #1.
+- ONE change (test-only): determinism by construction — operation-
+  routed mock (no counter exists; order cannot matter) + effect flush
+  before typing (clobber cannot land). Tower-validated 20/20 under
+  hostile forced timing; Hands independently re-validated this lap
+  (see PR). Component code untouched, byte-identical to main.
+- Caged to backlog: hydration-clobber pattern in DraftComposer (fix
+  during Lap 3 composer rebuild, with its own test); Node-20 CI
+  deprecation (renewed from Entry #10).
+- Doctrine note for R3: "mechanism, not statistics" requires locating
+  ALL mechanisms; proof standard is abolition-by-construction, stress
+  runs are corroboration only. Entry #11's "abolished" claim stands
+  corrected by this entry — append-only truth working as designed.
+
+>> BATON
+Incident #2 fix built and validated on `incident-2-test-races`; PR
+open, unmerged — Tower cert, Commander's eye, merge, then WATCH the
+main push-run to conclusion and report it (Entry #10 standing rule).
+Owed after green: nothing but Lap 3 — bake-off winner → Figma canon →
+Ignition Key #3.
+HARNESS: 5 tests green (post-fix, stress-verified) · last full eval n/a (no AI) · signals n/a

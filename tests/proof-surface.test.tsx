@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ProofSurface } from "../components/ProofSurface";
 
 function makeChain(result: unknown) {
@@ -35,19 +35,21 @@ describe("ProofSurface — honest failure state (no silent loss)", () => {
   });
 
   it("failed save keeps the draft and shows the unsynced state", async () => {
-    let entriesCalls = 0;
     fromMock.mockImplementation((table: string) => {
       if (table === "campaigns") {
         return makeChain({ data: [{ id: "c1", name: "Test Campaign", system_label: null }] });
       }
-      entriesCalls += 1;
-      if (entriesCalls === 1) return makeChain({ data: [] });
-      return makeChain({ data: null, error: { message: "network error" } });
+      const readChain = makeChain({ data: [] });
+      readChain.insert = vi.fn(() =>
+        makeChain({ data: null, error: { message: "network error" } })
+      );
+      return readChain;
     });
 
     render(<ProofSurface />);
 
     const textarea = await screen.findByPlaceholderText("What happened this session?");
+    await act(async () => {}); // flush pending effects (draft hydration) before typing
     fireEvent.change(textarea, { target: { value: "the tower falls" } });
     fireEvent.click(screen.getByRole("button", { name: "Save entry" }));
 
