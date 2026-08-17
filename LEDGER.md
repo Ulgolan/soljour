@@ -513,9 +513,16 @@ Doc-only append; records what Tower Session 2 lived.
 - Incident #1 closed the same evening it opened. R3 evidence: incident
   law's first firing — detection in minutes, zero user impact,
   write-up same day, closure now recorded in files.
+- Lap 3 scope ruled by the Commander (Tower Session 3): designed
+  Journal surface + cold-open resume brief + minimal `threads` table
+  (migration precedent: Lap 2). Export = Lap 4, HARD-GATED before
+  live-fire per NN#1. Design pipeline: 4 independent Claude Design
+  divergence rounds → Commander's pick → Figma canon → Key #3.
 
 >> BATON
-Entry #11 appended (doc-only). Incident #1 CLOSED in files. Owed next:
-Commander's calls on Lap 3 scope and design source, then Ignition
-Key #3 (designed Journal surface — DESIGN GATE's first activation).
+Entry #11 appended (doc-only). Incident #1 CLOSED in files. Lap 3 scope
+RULED (designed Journal surface, cold-open resume brief, minimal
+`threads` table; Export deferred to hard-gated Lap 4). Owed next:
+Ignition Key #3 (designed Journal surface — DESIGN GATE's first
+activation), scoped per this ruling.
 HARNESS: 5 tests green (Session 3 local run at af50196) · last full eval n/a (no AI) · signals n/a
