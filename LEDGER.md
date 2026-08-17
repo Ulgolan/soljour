@@ -207,3 +207,41 @@ Commander (manual steps above) — until set, red does not yet
 mechanically block the merge button. After that: Lap 2 ignition key
 (data layer / Supabase under amended NN#1).
 HARNESS: 4 tests green · last full eval n/a (no AI — Eval Law does not apply) · signals n/a
+
+---
+
+## Entry #6 — 2026-08-17 — PR #1 certified, merge authorized and executing
+
+**Session:** Hands (Claude Code, Sonnet), executing the Tower's merge
+ruling on the Activation Lap.
+
+- **PR #1 certified PASS by the Tower**, independent run: build exit 0,
+  4/4 tests green, diff clean, trinity untouched.
+- **Commander's eye: passed.**
+- **Branch protection: ACTIVE.** Ruleset `harness-gate` on `main` —
+  required check `harness`, empty bypass list (admin-enforced). Set
+  via the GitHub UI/ruleset path, not the CLI — the `gh api` command
+  logged in Entry #5 was wrong: dotted keys (e.g.
+  `required_status_checks.strict=true`) don't nest into the JSON body
+  the classic-protection endpoint expects; that call would have needed
+  a JSON payload (`--input`) or the newer rulesets API, not flat `-f`
+  dot-paths. Correction logged here for the next session that reaches
+  for it.
+- **New convention:** the gate checks commits at push time, so a
+  merge micro-entry (this one) rides the lap branch *before* the
+  merge, not after — pushing straight to `main` post-merge would land
+  an unchecked commit and the gate would reject it. Session-close
+  ledger appends that land *after* a merge is complete (as in Entry #4
+  under the doc-only exemption) are a different case from a ledger
+  commit that is itself part of what gets merged.
+- **Merge authorized by the Tower, executing this session:**
+  `git merge --ff-only activation-lap` into `main` once this commit's
+  `harness` check is green. No squash, no rebase, no merge commit.
+  `activation-lap` branch retained (history stays).
+
+>> BATON
+Activation Lap complete: harness live, CI enforced, main gated.
+Main's new head recorded in the merge report to the Tower. Owed next:
+Lap 2 ignition key (data layer / Supabase under amended NN#1 — Tower
+drafts).
+HARNESS: 4 tests green · last full eval n/a (no AI — Eval Law does not apply) · signals n/a
