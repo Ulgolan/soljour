@@ -485,3 +485,37 @@ conclusion gets reported at every future close (this entry's standing
 rule); Lap 3 (designed Journal surface) remains the next real lap once
 this incident closes.
 HARNESS: 5 tests green (5/5 local runs) · last full eval n/a (no AI) · signals n/a
+
+---
+
+## Entry #11 — 2026-08-17 — Incident #1 closed: deflake certified, merged, main green
+
+**Session:** Hands (Claude Code), micro-lap on branch `ledger-entry-11`
+(off main tip `af50196`), executing Tower Session 3's ignition key.
+Doc-only append; records what Tower Session 2 lived.
+
+- PR #4 (deflake) certified in Tower Session 2: T2 diff scope (test +
+  LEDGER only, components byte-identical to main), T1 three independent
+  full-suite runs. Certification basis: MECHANISM, not statistics —
+  `findByText` polls up to 1s against a microsecond mocked rejection;
+  the race was abolished, not outrun (Tribunal-corrected framing).
+- Commander's eye passed on the one-line diff; merge Commander-approved
+  in-session per standing convention (Entry #8).
+- Main at `af50196`; push-run harness GREEN, first attempt, watched to
+  completion. Entry #10's standing rule (push-run conclusion reported
+  at every close) is satisfied IN FILES by this entry — the conclusion
+  no longer lives only in a disposable chat.
+- Branch `deflake-proof-surface` RETAINED at `af50196` (ls-remote
+  verified twice: Tower Session 2, then Session 3 fresh). Session 3's
+  "gone from origin" misread traced to mechanism: `git clone --depth`
+  implies `--single-branch`, so the shallow clone's remote view held
+  only main. Tower error, caught by the T2→T3 letter before cost.
+- Incident #1 closed the same evening it opened. R3 evidence: incident
+  law's first firing — detection in minutes, zero user impact,
+  write-up same day, closure now recorded in files.
+
+>> BATON
+Entry #11 appended (doc-only). Incident #1 CLOSED in files. Owed next:
+Commander's calls on Lap 3 scope and design source, then Ignition
+Key #3 (designed Journal surface — DESIGN GATE's first activation).
+HARNESS: 5 tests green (Session 3 local run at af50196) · last full eval n/a (no AI) · signals n/a
