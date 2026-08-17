@@ -51,7 +51,7 @@ describe("ProofSurface — honest failure state (no silent loss)", () => {
     fireEvent.change(textarea, { target: { value: "the tower falls" } });
     fireEvent.click(screen.getByRole("button", { name: "Save entry" }));
 
-    expect(await screen.findByText("not synced — kept locally")).toBeInTheDocument();
+    expect(await screen.findByText(/not synced/i)).toBeInTheDocument();
     expect(textarea).toHaveValue("the tower falls");
   });
 });

@@ -433,3 +433,55 @@ v0.5 (A-2) adopted this boundary. Next: Lap 3 — designed Journal
 surface (DESIGN GATE + resume brief + export before live-fire).
 Christening OPEN — do not assume the system.
 HARNESS: 5 tests green · last full eval n/a (no AI) · signals n/a
+
+---
+
+## Entry #10 — 2026-08-17 — Incident: red harness on main (first firing of the incident law)
+
+**Session:** Hands (Claude Code), executing the deflake micro-lap on
+branch `deflake-proof-surface` (off main tip `d683a0c`; branch-point
+law verified empty — `d683a0c` is main's live tip, no doc-only gap to
+check).
+
+- **Timeline:** Entry #9 merged green via PR #3; the push-to-main run
+  failed on `tests/proof-surface` (the "unsynced" assertion); Commander
+  spotted the notification within minutes; Tower reproduced green at
+  the same SHA (build 0, 5/5) proving nondeterminism; re-run this
+  session: **GREEN, 5/5 (full suite, 4 files / 5 tests), 5 consecutive
+  local runs, zero flakes.**
+- **Root cause:** flaky async assertion — the exact-text
+  `findByText("not synced — kept locally")` lookup racing the post-save
+  state update, and brittle against the string's exact form. Product
+  healthy; instrument unreliable.
+- **Contributing factor (Tower):** session-close order (Entry #9)
+  didn't require confirming the main push-run's conclusion the way
+  Laps 1–2 did — the gap that let this land unnoticed until the
+  Commander caught the notification himself.
+- **ONE change, scoped to the test only:** `tests/proof-surface.test.tsx`
+  line 54 — exact-text `findByText` swapped for substring-tolerant
+  `findByText(/not synced/i)`. Verified the guard: temporarily gated
+  the banner off in `components/ProofSurface.tsx` (`{false && ...}`),
+  confirmed the test correctly failed against the unmodified assertion,
+  then reverted the component — `git diff --stat` against main shows
+  exactly one file touched, the test. No component, no other test, no
+  CI config touched, per the ignition key's DO NOT list.
+- **Standing rule adopted from the contributing factor:** no session
+  close without the main push-run's conclusion explicitly reported —
+  binding on every future close, not just this one.
+- **Caged to backlog (not this lap):** the Node-20 deprecation warning
+  in the CI Actions log — real, minor, unrelated to the flake.
+- **Note for R3:** the incident law's first firing worked as designed —
+  detection in minutes, zero user impact (no data loss, no bad merge:
+  main's product code was never wrong), write-up same day.
+
+>> BATON
+Deflake built and verified on `deflake-proof-surface`: one-line test
+change, guard-checked (fails when the banner is removed, passes when
+present), 5/5 green across 5 consecutive local full-suite runs. PR
+opened, unmerged — Tower certifies per Hard Rule #2, then Commander's
+eye, then Commander-approved `--ff-only` merge per standing convention.
+Owed next: Tower certification of this PR; confirmation the push-run
+conclusion gets reported at every future close (this entry's standing
+rule); Lap 3 (designed Journal surface) remains the next real lap once
+this incident closes.
+HARNESS: 5 tests green (5/5 local runs) · last full eval n/a (no AI) · signals n/a
