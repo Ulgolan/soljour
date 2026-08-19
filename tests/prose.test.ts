@@ -32,14 +32,14 @@ describe("parseProse — the four voices", () => {
     ]);
   });
 
-  it("renders a line starting with // as a meta note, stripped of the marker", () => {
+  it("renders a line starting with // as a meta note, stripped of the marker and its one leading space", () => {
     const blocks = parseProse("// remember to bring this NPC back");
-    expect(blocks).toEqual([{ kind: "meta", lines: [" remember to bring this NPC back"] }]);
+    expect(blocks).toEqual([{ kind: "meta", lines: ["remember to bring this NPC back"] }]);
   });
 
   it("groups consecutive // lines into one meta block", () => {
     const blocks = parseProse("// idea one\n// idea two");
-    expect(blocks).toEqual([{ kind: "meta", lines: [" idea one", " idea two"] }]);
+    expect(blocks).toEqual([{ kind: "meta", lines: ["idea one", "idea two"] }]);
   });
 
   it("renders a standalone --- line as a scene break, never a heading", () => {
@@ -57,6 +57,28 @@ describe("parseProse — the four voices", () => {
       { kind: "paragraph", children: [{ type: "text", text: "check the door // later" }] },
     ]);
     expect(blocks.some((b) => b.kind === "meta")).toBe(false);
+  });
+});
+
+describe("parseProse — pencil block closure and the meta space (Micro-key 4.1)", () => {
+  it("strips a single trailing ] from a closed pencil block line", () => {
+    const blocks = parseProse("[rolled 14 vs DC 12]");
+    expect(blocks).toEqual([{ kind: "pencil", lines: ["rolled 14 vs DC 12"] }]);
+  });
+
+  it("renders an open pencil block line (no trailing ]) unchanged — both are legal", () => {
+    const blocks = parseProse("[rolled 14 vs DC 12");
+    expect(blocks).toEqual([{ kind: "pencil", lines: ["rolled 14 vs DC 12"] }]);
+  });
+
+  it("preserves interior ] characters, stripping only the one final ]", () => {
+    const blocks = parseProse("[a [nested] note]");
+    expect(blocks).toEqual([{ kind: "pencil", lines: ["a [nested] note"] }]);
+  });
+
+  it("// note and //note render identically — the one leading space is cosmetic", () => {
+    expect(parseProse("// note")).toEqual(parseProse("//note"));
+    expect(parseProse("//note")).toEqual([{ kind: "meta", lines: ["note"] }]);
   });
 });
 
@@ -154,9 +176,9 @@ describe("inline pencil spans are verbatim — no markdown inside (Addendum v3 F
     expect(span).toEqual({ type: "pencil", text: "Fate → **yes**" });
   });
 
-  it("pencil BLOCK lines are verbatim too (unchanged)", () => {
+  it("pencil BLOCK lines are verbatim too (markdown-inert; the closing ] is stripped per Micro-key 4.1)", () => {
     const blocks = parseProse("[Fate → **yes**]");
-    expect(blocks).toEqual([{ kind: "pencil", lines: ["Fate → **yes**]"] }]);
+    expect(blocks).toEqual([{ kind: "pencil", lines: ["Fate → **yes**"] }]);
   });
 });
 

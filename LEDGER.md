@@ -839,3 +839,52 @@ named) and trial start. Codex and Atlas remain honest minimal
 placeholders, unchanged this lap, still owed their own laps.
 HARNESS: 62 tests green · `npm run build` clean · `npm run lint` clean
 · last full eval n/a (no AI) · signals n/a
+
+---
+
+## Entry #15 — 2026-08-20 — Micro-key 4.1: pencil block closure (post-merge polish)
+
+**Session:** Hands (Claude Code, Sonnet), branch `lap-4-1-block-closure`
+off main tip `be82cfd` (verified before branch — exact match, PR #8's
+merge commit from Entry #14).
+
+- **Eye-pass finding:** the Commander's own handwritten-notebook
+  convention closes brackets by habit — `[rolled 14 vs DC 12]`, not
+  left dangling — but the pencil-block parser only ever stripped the
+  opening `[`, so a closed block rendered with a dangling trailing
+  `]` no other voice carries. Fix, in `lib/prose.ts`: a pencil block
+  line ending in a single trailing `]` has it stripped along with the
+  opening marker — the block owns both. A line with no trailing `]`
+  renders unchanged; both are equally legal closures. Only the one
+  final `]` is ever touched — an interior `]` (e.g. a nested aside
+  inside the block) survives untouched.
+- **Same pass, meta lines:** the single space conventionally typed
+  after `//` is marker whitespace, not content — `// note` and
+  `//note` now render identically. Trims at most one leading space;
+  further leading spaces are left as the writer's own indentation.
+- **Round-trip law untouched, confirmed by scope:** neither change
+  touches `lib/markdown.ts` or storage — `git diff --stat main` shows
+  exactly `lib/prose.ts` + `tests/prose.test.ts`. Rendering only, as
+  instructed; inline span logic, insertion logic (`lib/markerInsertion.ts`),
+  and export were not opened.
+- **Tests: 66 green (62 → 66).** Four new: closed block strips the
+  dangling `]`; open block (no trailing `]`) unchanged; a nested
+  interior `]` survives while only the final one strips; `// note`
+  and `//note` parse to the identical tree. Two Entry #14 assertions
+  that hard-coded the old (dangling-`]`, space-retained) behavior were
+  updated in place to match the ratified fix, per the project's
+  photograph doctrine (Entry #7) — a lap that changes certified
+  behavior retakes the photograph rather than carrying the old one
+  forward as a false "+". `npm run build` and `npm run lint` both
+  clean.
+
+>> BATON
+Micro-key 4.1 ships on `lap-4-1-block-closure` — pencil blocks close
+their own bracket, meta notes ignore the marker's one cosmetic space.
+66/66 tests green, build clean, lint clean, diff scoped to exactly the
+two files instructed. PR open, CI to be confirmed green. Owed next:
+Tower certification, Commander's eye, Commander-approved `--ff-only`
+merge — then **THE CHRISTENING**: the trial campaign gets its name and
+the live-fire clock starts. Nothing else is queued ahead of it.
+HARNESS: 66 tests green · `npm run build` clean · `npm run lint` clean
+· last full eval n/a (no AI) · signals n/a

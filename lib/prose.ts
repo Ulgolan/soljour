@@ -205,7 +205,13 @@ export function parseProse(text: string): ProseBlock[] {
       flushInk();
       const group: string[] = [];
       while (i < lines.length && classifyLine(lines[i]) === "pencil") {
-        group.push(lines[i].slice(1));
+        // The block owns both markers: a single trailing "]" is stripped
+        // along with the opening "[" (Micro-key 4.1). Interior "]"
+        // characters are untouched, and a line with no trailing "]" is
+        // equally legal — both close the block.
+        let block = lines[i].slice(1);
+        if (block.endsWith("]")) block = block.slice(0, -1);
+        group.push(block);
         i++;
       }
       blocks.push({ kind: "pencil", lines: group });
@@ -216,7 +222,11 @@ export function parseProse(text: string): ProseBlock[] {
       flushInk();
       const group: string[] = [];
       while (i < lines.length && classifyLine(lines[i]) === "meta") {
-        group.push(lines[i].slice(2));
+        // A single leading space after "//" is cosmetic, not content
+        // (Micro-key 4.1) — "// note" and "//note" render identically.
+        let note = lines[i].slice(2);
+        if (note.startsWith(" ")) note = note.slice(1);
+        group.push(note);
         i++;
       }
       blocks.push({ kind: "meta", lines: group });
