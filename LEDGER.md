@@ -685,15 +685,24 @@ HARNESS: 5 tests green (post-fix, stress-verified) · last full eval n/a (no AI)
   empty card; **(4)** selection survives remount via `localStorage`;
   **(5)** draft isolation — typed in A, B's composer opens clean, A's
   draft is restored intact on return, B's storage was never touched.
+- **Commander rulings (Tower Session 3, logged pre-merge):** Lap 4 =
+  "The Scribe's Lap" — markdown rendering, the writing convention
+  below, and a tappable "markdown ok" shortcut sheet; Codex and
+  Atlas slide one slot down. Writing convention adopted from the
+  christening onward (rendering lands in Lap 4, entries beautify
+  retroactively): lines starting with "[" = mechanical/pencil voice
+  (rolls, oracle, combat); "//" = meta note; "---" = scene break;
+  all other text = narrative ink. Convention descends from ACP's
+  handwritten notebook markup (solo-rpg-digitization legend) — the
+  notebooks were the spec.
 
 >> BATON
-The Chronicle ships on `lap-3-chronicle`, unmerged (Hard Rule #2 —
-Tower certification, then Commander's eye, then Commander-approved
-merge). The campaign-selection gap the Commander's eye caught pre-merge
-is closed on this same branch — the christening path now exists.
-Ready for the Commander's eye against the live app once he signs in —
-Hands could not do this itself (no credentials, declined to guess).
-Owed next: Tower certification of this PR; Commander's-eye pass on the
-live preview; then Codex and Atlas real laps.
+The Chronicle ships on `lap-3-chronicle`. Tower re-certified (delta
+T2-verified: three files only, keyed composer per mandate, render-time
+scoping, five tests as specified, no delete affordances). Commander's
+eye passed on the live preview. Merge authorized pending this codicil.
+Owed next: christening + trial start, then Lap 4 (Scribe's Lap —
+markdown rendering, writing convention, "markdown ok" shortcut sheet;
+Codex/Atlas slide one slot down).
 HARNESS: 21 tests green (5/5 local runs) · `npm run build` clean ·
 `npm run lint` clean · last full eval n/a (no AI) · signals n/a
