@@ -88,3 +88,16 @@ describe("generateCampaignMarkdown", () => {
     expect(markdown).toContain("_none yet_");
   });
 });
+
+describe("generateCampaignMarkdown — round-trip (Step 1: export stays raw)", () => {
+  it("carries convention and markdown markup through unrendered, verbatim", () => {
+    const written = "**Bold** ink.\n[rolled 14 vs DC 12\n// revisit this NPC\n---\nAfter the break.";
+    const entries: Entry[] = [
+      { id: "e1", campaign_id: "c1", title: null, content: written, created_at: "2026-07-28T10:00:00Z" },
+    ];
+
+    const markdown = generateCampaignMarkdown(campaign, entries, []);
+
+    expect(markdown).toContain(written);
+  });
+});

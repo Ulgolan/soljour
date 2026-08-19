@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 const DEBOUNCE_MS = 500;
 
@@ -11,6 +11,15 @@ function contentStorageKey(draftKey: string) {
 function titleStorageKey(draftKey: string) {
   return `${draftKey}:title`;
 }
+
+export type SelectionRange = { start: number; end: number };
+
+export type DraftComposerHandle = {
+  /** Captures the textarea's current selection — call before it can blur. */
+  getSelectionRange(): SelectionRange;
+  /** Wraps `range` with before/after (or inserts at the caret if empty). */
+  insertAtRange(range: SelectionRange, before: string, after: string): void;
+};
 
 /**
  * idle: 1 row, no title field, save disabled-styled.
@@ -24,15 +33,11 @@ function titleStorageKey(draftKey: string) {
  * back to the stored (or empty) value is abolished by construction, not
  * guarded against.
  */
-export function DraftComposer({
-  draftKey,
-  placeholder,
-  onSave,
-}: {
+export const DraftComposer = forwardRef<DraftComposerHandle, {
   draftKey: string;
   placeholder: string;
   onSave: (content: string, title: string) => Promise<boolean>;
-}) {
+}>(function DraftComposer({ draftKey, placeholder, onSave }, ref) {
   const [content, setContent] = useState(
     () => window.localStorage.getItem(contentStorageKey(draftKey)) ?? "",
   );
@@ -43,6 +48,8 @@ export function DraftComposer({
   const [saving, setSaving] = useState(false);
   const contentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const pendingCaretRef = useRef<number | null>(null);
 
   function handleContentChange(value: string) {
     setContent(value);
@@ -51,6 +58,39 @@ export function DraftComposer({
       window.localStorage.setItem(contentStorageKey(draftKey), value);
     }, DEBOUNCE_MS);
   }
+
+  // Runs after `content` (and the textarea's DOM value) has committed a
+  // shortcut-sheet insertion, so the caret lands in the already-updated
+  // text rather than racing the pending re-render.
+  useEffect(() => {
+    if (pendingCaretRef.current === null) return;
+    const caret = pendingCaretRef.current;
+    pendingCaretRef.current = null;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(caret, caret);
+  }, [content]);
+
+  useImperativeHandle(ref, () => ({
+    getSelectionRange() {
+      const el = textareaRef.current;
+      const fallback = { start: content.length, end: content.length };
+      if (!el) return fallback;
+      return {
+        start: el.selectionStart ?? fallback.start,
+        end: el.selectionEnd ?? fallback.end,
+      };
+    },
+    insertAtRange(range, before, after) {
+      const { start, end } = range;
+      const selected = content.slice(start, end);
+      const insertion = before + selected + after;
+      const newContent = content.slice(0, start) + insertion + content.slice(end);
+      pendingCaretRef.current = selected.length > 0 ? start + insertion.length : start + before.length;
+      handleContentChange(newContent);
+    },
+  }));
 
   function handleTitleChange(value: string) {
     setTitle(value);
@@ -88,6 +128,7 @@ export function DraftComposer({
       )}
       <div className="flex items-end gap-2">
         <textarea
+          ref={textareaRef}
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
           onFocus={() => setFocused(true)}
@@ -114,4 +155,4 @@ export function DraftComposer({
       </div>
     </div>
   );
-}
+});

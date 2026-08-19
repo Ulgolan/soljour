@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { DraftComposer } from "./DraftComposer";
+import { DraftComposer, type DraftComposerHandle, type SelectionRange } from "./DraftComposer";
+import { Prose } from "./Prose";
+import { ShortcutSheet, type Shortcut } from "./ShortcutSheet";
 import { SyncLine } from "./SyncLine";
 import { ThreadList } from "./ThreadList";
 import { CampaignForm } from "./CampaignForm";
+import { inkPlainText } from "@/lib/prose";
 import {
   generateCampaignMarkdown,
   exportFilename,
@@ -27,8 +30,11 @@ export function Chronicle() {
   const [syncState, setSyncState] = useState<"synced" | "unsynced">("synced");
   const [whereYouWereExpanded, setWhereYouWereExpanded] = useState(true);
   const [exportOpen, setExportOpen] = useState(false);
+  const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false);
   const riverEndRef = useRef<HTMLDivElement>(null);
   const hasScrolledRef = useRef(false);
+  const composerRef = useRef<DraftComposerHandle>(null);
+  const shortcutSelectionRef = useRef<SelectionRange>({ start: 0, end: 0 });
 
   const campaign = campaigns?.find((c) => c.id === selectedCampaignId) ?? null;
 
@@ -140,6 +146,18 @@ export function Chronicle() {
     if (!error && data) setThreads((prev) => prev.map((t) => (t.id === id ? data : t)));
   }
 
+  function handleOpenShortcutSheet() {
+    // Captured now, before the sheet steals focus and blurs the textarea
+    // (Amendment A3) — the tap that follows applies to this stored range.
+    shortcutSelectionRef.current = composerRef.current?.getSelectionRange() ?? { start: 0, end: 0 };
+    setShortcutSheetOpen(true);
+  }
+
+  function handlePickShortcut(shortcut: Shortcut) {
+    composerRef.current?.insertAtRange(shortcutSelectionRef.current, shortcut.before, shortcut.after);
+    setShortcutSheetOpen(false);
+  }
+
   function handleExportDownload() {
     if (!campaign) return;
     const markdown = generateCampaignMarkdown(
@@ -222,15 +240,26 @@ export function Chronicle() {
       <div className="sticky bottom-0 flex flex-col gap-2 border-t border-[var(--structural-border)] bg-[var(--surface)] px-5 py-2.5 lg:col-start-2 lg:row-start-3 lg:mx-auto lg:w-full lg:max-w-[68ch] lg:rounded-xl lg:border">
         <DraftComposer
           key={campaign.id}
+          ref={composerRef}
           draftKey={`soljour:draft:${campaign.id}`}
           placeholder={placeholder}
           onSave={handleSave}
         />
         <div className="flex items-center justify-between">
           <SyncLine state={syncState} />
-          <span className="font-mono text-[10px] text-[var(--text-meta-line)]">markdown ok</span>
+          <button
+            type="button"
+            onClick={handleOpenShortcutSheet}
+            className="font-mono text-[10px] text-[var(--text-meta-line)]"
+          >
+            markdown ok
+          </button>
         </div>
       </div>
+
+      {shortcutSheetOpen && (
+        <ShortcutSheet onPick={handlePickShortcut} onClose={() => setShortcutSheetOpen(false)} />
+      )}
 
       {exportOpen && (
         <ExportSheet
@@ -332,7 +361,10 @@ function FirstOpenInvitation() {
 }
 
 function snippet(content: string, maxLen = 140): string {
-  const trimmed = content.trim();
+  // Ink only (Amendment A4) — pencil and meta blocks never surface here,
+  // and inline markdown is flattened: the resume brief quotes the story,
+  // never the dice.
+  const trimmed = inkPlainText(content);
   if (trimmed.length <= maxLen) return trimmed;
   return `…${trimmed.slice(-maxLen).trimStart()}`;
 }
@@ -391,17 +423,12 @@ function WhereYouWere({
 }
 
 function EntryCard({ entry }: { entry: Entry }) {
-  const paragraphs = entry.content.split(/\n{2,}/).filter(Boolean);
   return (
     <article className="flex flex-col gap-2">
       <div className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-meta-line)]">
         {formatEntryMeta(entry)}
       </div>
-      {paragraphs.map((p, i) => (
-        <p key={i} className="font-serif text-[15.5px] leading-[1.72] text-[var(--text-entry-body)]">
-          {p}
-        </p>
-      ))}
+      <Prose content={entry.content} />
     </article>
   );
 }

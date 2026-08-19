@@ -706,3 +706,103 @@ markdown rendering, writing convention, "markdown ok" shortcut sheet;
 Codex/Atlas slide one slot down).
 HARNESS: 21 tests green (5/5 local runs) · `npm run build` clean ·
 `npm run lint` clean · last full eval n/a (no AI) · signals n/a
+
+---
+
+## Entry #14 — 2026-08-20 — Lap 4: The Scribe's Lap (markdown + the writing convention)
+
+**Session:** Hands (Claude Code, Sonnet), branch `lap-4-scribe` off main tip
+`6c70d16`, executing Ignition Key #4 plus Amendments A1–A5.
+
+- **Branch anchor verified: exact match.** `lap-4-scribe` cut from
+  `6c70d16` (Entry #13's own commit) — main had not advanced. No
+  doc-only gap to reconcile, unlike prior laps.
+- **The pipeline, built pure-function-first at `lib/prose.ts`:** a
+  line-level convention pass runs FIRST — `[` pencil, `//` meta,
+  standalone `---` scene break — then baseline markdown (bold,
+  italic, `#` headings, `>` quote, lists; links deliberately excluded
+  per A2) parses only the remaining ink lines. Setext headings are
+  disabled by construction, not by a special case: `---` is claimed by
+  the convention pass before the markdown parser ever sees it, so
+  "prose line followed by `---`" cannot become a heading — proven by
+  a dedicated test. Consecutive pencil lines group into one block;
+  consecutive `//` lines group the same way (A5). Output is a typed
+  render model (`ProseBlock[]`), never an HTML string.
+- **`components/Prose.tsx`** renders that model straight to React
+  nodes — no `dangerouslySetInnerHTML` anywhere, so raw HTML in entry
+  text is inert by construction (locked in by a test: `<script>`/`<b>`
+  tags render as literal text). Pencil uses the canon entry-meta gray
+  (`--text-meta-line`) with a quiet left rule; meta notes use the
+  dimmest token in the palette (`--text-disabled-glyph`), mono,
+  italic; scene breaks use the existing hairline-divider grammar
+  already established for sheet dividers, not a fresh style. Wired
+  into the river via `EntryCard` (replacing the old blank-line
+  paragraph split — same visual result for plain prose, now correct
+  for all four voices).
+- **Resume brief quotes the story, not the dice (Amendment A4):**
+  `inkPlainText()` skips pencil/meta blocks entirely and flattens
+  inline markdown before the "Where you were" snippet is cut from it.
+  `Chronicle.tsx`'s `snippet()` now calls it instead of raw
+  `content.trim()`. Titles and thread text are untouched — the
+  convention is entry-prose-only (A5), the only scope edge this lap
+  had to hold.
+- **Export stays raw, verified by an added round-trip test:**
+  `generateCampaignMarkdown` was never touched; a new test in
+  `tests/markdown.test.ts` writes an entry containing all four voices
+  and asserts the exported `.md` contains it byte-for-byte, unrendered
+  — export is the source, not a rendering of the render.
+- **The shortcut sheet (Step 2 + Amendment A3):** the "markdown ok"
+  hint under the composer is now a real button, same resting look, no
+  new chrome. `DraftComposer` gained a `forwardRef` + imperative
+  handle (`getSelectionRange` / `insertAtRange`) — additive only, its
+  save/draft semantics (localStorage lazy-initializer seeding, the
+  debounced write, the clear-on-save-success path) are byte-identical
+  to Entry #13. Selection is captured at the moment the hint is
+  tapped, stored in `Chronicle`, and applied to that stored range on
+  the sheet-row tap regardless of the blur the sheet's own opening
+  causes — proven by a test that blurs the textarea between capture
+  and tap. `components/ShortcutSheet.tsx` matches the export/campaign
+  sheet grammar exactly (bottom sheet, scrim, mono uppercase label,
+  canon palette): Bold, Italic, Heading, Quote, List, Pencil block,
+  Meta note, Scene break, each showing its literal marker.
+- **Tests: 41 green, the prior 21 untouched** (`tests/prose.test.ts`
+  ×16 — the four voices, precedence, markdown baseline, HTML-inert,
+  resume ink-only flattening; `tests/shortcut-sheet.test.tsx` ×3 —
+  blur-survives capture, empty-caret prefix insertion, draft buffer
+  retention; `tests/markdown.test.ts` +1 — the round-trip). `npm run
+  build` and `npm run lint` both clean.
+- **Visual pass, Entry #13's pattern repeated exactly:** a temporary,
+  uncommitted `/devpreview` route plus a local-only
+  `.claude/launch.json` (`.claude/` is untracked in this repo; neither
+  file was ever staged — `git status` before this entry shows a diff
+  scoped to exactly `app/` + `components/` + `lib/` + `tests/` + this
+  file, no harness residue).
+  Verified at mobile width: all four voices render distinctly per the
+  two-voice type law; the shortcut sheet opens, a tap inserts markers
+  around a captured selection, the sheet closes, focus returns to the
+  composer. Verified at desktop width: same rendering holds. Harness
+  removed and `.next` cache cleared before the final `build`/`lint`
+  pass (a stale generated-types reference to the deleted route
+  briefly failed typecheck — cache artifact, not a code issue; gone
+  after `rm -rf .next`).
+- **DO NOT list held:** composer save/draft semantics unchanged
+  (verified line-by-line against Entry #13's file); no toolbar added
+  (the hint remains the sole entry point); no sync states touched; CI
+  config, migrations, Codex/Atlas, canon files, and prior
+  entries/BATONs untouched — `git diff --stat main` confirms the
+  scope.
+
+>> BATON
+The Scribe's Lap ships on `lap-4-scribe`: markdown + the writing
+convention render everywhere prose shows (river, resume brief), export
+stays raw, the "markdown ok" hint is now a working shortcut sheet.
+41/41 tests green, build clean, lint clean, visual pass done and the
+harness removed. PR not yet opened this session — owed next: open the
+PR, Tower certification (raw pull), Commander's eye on the preview,
+Commander-approved `--ff-only` merge. Commander ruled trial start
+waits on this lap — sequencing, not delay: once merged, the next
+things owed are the christening (trial campaign named) and trial
+start. Codex and Atlas remain honest minimal placeholders, unchanged
+this lap, still owed their own laps.
+HARNESS: 41 tests green · `npm run build` clean · `npm run lint` clean
+· last full eval n/a (no AI) · signals n/a
