@@ -4,18 +4,24 @@
  * components consume the model and emit React nodes directly, so raw
  * HTML in user text is inert by construction, never by a filter.
  *
- * Pipeline order is architecture (Key #4 Amendment A1): a line-level
- * convention pass runs FIRST — "[" pencil, "//" meta, "---" scene
- * break — then baseline markdown parses only the remaining ink lines.
- * Setext headings are disabled: "---" is always and only a scene
- * break, because the convention pass claims every such line before
- * the markdown parser ever sees it.
+ * Pipeline order is architecture (Key #4 Amendment A1, extended to the
+ * inline level by Addendum v3 F3): a line-level convention pass runs
+ * FIRST — "[" pencil block, "//" meta, "---"-family scene break — then
+ * baseline markdown parses only the remaining ink lines. Within each
+ * surviving ink line, inline pencil spans (closed "[...]" pairs) are
+ * extracted FIRST, and markdown parses only what's left of that line —
+ * convention beats markdown at both levels, so an emphasis pair cannot
+ * cross a span boundary. Setext headings are disabled: a standalone
+ * "---"-family line is always and only a scene break, because the
+ * convention pass claims it before the markdown parser ever sees it.
  */
 
 export type InlineNode =
   | { type: "text"; text: string }
   | { type: "bold"; children: InlineNode[] }
-  | { type: "italic"; children: InlineNode[] };
+  | { type: "italic"; children: InlineNode[] }
+  /** Inline pencil span (F2) — verbatim, no markdown inside (F4). */
+  | { type: "pencil"; text: string };
 
 export type InkBlock =
   | { kind: "heading"; level: 1 | 2 | 3 | 4 | 5 | 6; children: InlineNode[] }
@@ -31,14 +37,17 @@ export type ProseBlock =
 
 type LineKind = "pencil" | "meta" | "scene-break" | "ink";
 
+/** F1: 3+ hyphens alone on a line (surrounding whitespace tolerated). */
+const SCENE_BREAK_RE = /^-{3,}$/;
+
 function classifyLine(line: string): LineKind {
-  if (line.trim() === "---") return "scene-break";
+  if (SCENE_BREAK_RE.test(line.trim())) return "scene-break";
   if (line.startsWith("[")) return "pencil";
   if (line.startsWith("//")) return "meta";
   return "ink";
 }
 
-/** Inline emphasis only — bold/italic, no links (Amendment A2). */
+/** Baseline markdown emphasis only — bold/italic, no links (Amendment A2). */
 export function parseInline(text: string): InlineNode[] {
   const nodes: InlineNode[] = [];
   const pattern = /\*\*(.+?)\*\*|__(.+?)__|\*(.+?)\*|_(.+?)_/;
@@ -57,6 +66,41 @@ export function parseInline(text: string): InlineNode[] {
     }
     rest = rest.slice(m.index + m[0].length);
   }
+  return nodes;
+}
+
+/** A closed "[...]" pair — unclosed "[" and stray "]" are left as literal ink. */
+const PENCIL_SPAN_RE = /\[([^[\]\n]*)\]/;
+
+/**
+ * F2/F3: extracts inline pencil spans from one source line FIRST (spans
+ * never match across lines — this always runs per-line), then runs the
+ * markdown baseline independently on each surviving segment. Span
+ * content is never markdown-parsed (F4) — verbatim, by construction.
+ */
+export function parseInlineWithPencil(line: string): InlineNode[] {
+  const nodes: InlineNode[] = [];
+  let rest = line;
+  while (rest.length > 0) {
+    const m = PENCIL_SPAN_RE.exec(rest);
+    if (!m) {
+      nodes.push(...parseInline(rest));
+      break;
+    }
+    if (m.index > 0) nodes.push(...parseInline(rest.slice(0, m.index)));
+    nodes.push({ type: "pencil", text: m[1] });
+    rest = rest.slice(m.index + m[0].length);
+  }
+  return nodes;
+}
+
+/** Joins per-line inline node arrays with a literal space, line-scoped. */
+function parseInlineLines(lines: string[]): InlineNode[] {
+  const nodes: InlineNode[] = [];
+  lines.forEach((line, i) => {
+    if (i > 0) nodes.push({ type: "text", text: " " });
+    nodes.push(...parseInlineWithPencil(line));
+  });
   return nodes;
 }
 
@@ -82,7 +126,7 @@ function parseInkRun(lines: string[]): InkBlock[] {
       blocks.push({
         kind: "heading",
         level: heading[1].length as 1 | 2 | 3 | 4 | 5 | 6,
-        children: parseInline(heading[2]),
+        children: parseInlineWithPencil(heading[2]),
       });
       i++;
       continue;
@@ -94,7 +138,7 @@ function parseInkRun(lines: string[]): InkBlock[] {
       while (i < lines.length) {
         const m = QUOTE_RE.exec(lines[i]);
         if (!m) break;
-        quoteLines.push(parseInline(m[1]));
+        quoteLines.push(parseInlineWithPencil(m[1]));
         i++;
       }
       blocks.push({ kind: "blockquote", lines: quoteLines });
@@ -110,7 +154,7 @@ function parseInkRun(lines: string[]): InkBlock[] {
       while (i < lines.length) {
         const m = itemRe.exec(lines[i]);
         if (!m) break;
-        items.push(parseInline(m[1]));
+        items.push(parseInlineWithPencil(m[1]));
         i++;
       }
       blocks.push({ kind: "list", ordered, items });
@@ -118,6 +162,8 @@ function parseInkRun(lines: string[]): InkBlock[] {
     }
 
     // Paragraph: consume consecutive plain lines (lazy continuation).
+    // Each source line is inline-parsed independently, THEN joined —
+    // pencil spans never match across the line boundary (F2).
     const paraLines: string[] = [];
     while (i < lines.length) {
       const l = lines[i];
@@ -126,7 +172,7 @@ function parseInkRun(lines: string[]): InkBlock[] {
       paraLines.push(l);
       i++;
     }
-    blocks.push({ kind: "paragraph", children: parseInline(paraLines.join(" ")) });
+    blocks.push({ kind: "paragraph", children: parseInlineLines(paraLines) });
   }
   return blocks;
 }
@@ -185,15 +231,22 @@ export function parseProse(text: string): ProseBlock[] {
   return blocks;
 }
 
+/** F6: pencil spans contribute nothing to the flattened excerpt — removed, not shown. */
 function flattenInline(nodes: InlineNode[]): string {
-  return nodes.map((n) => (n.type === "text" ? n.text : flattenInline(n.children))).join("");
+  return nodes
+    .map((n) => {
+      if (n.type === "text") return n.text;
+      if (n.type === "pencil") return "";
+      return flattenInline(n.children);
+    })
+    .join("");
 }
 
 /**
- * Ink-only plain text for the resume snippet (Amendment A4): pencil
- * and meta blocks are skipped entirely, markers stripped, inline
- * markdown flattened. The resume brief quotes the story, never the
- * dice.
+ * Ink-only plain text for the resume snippet (Amendment A4, extended by
+ * F6): pencil and meta blocks are skipped entirely, inline pencil spans
+ * are stripped along with the rest of the markers, inline markdown is
+ * flattened. The resume brief quotes the story, never the dice.
  */
 export function inkPlainText(text: string): string {
   const blocks = parseProse(text);

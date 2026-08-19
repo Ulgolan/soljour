@@ -791,18 +791,51 @@ HARNESS: 21 tests green (5/5 local runs) · `npm run build` clean ·
   config, migrations, Codex/Atlas, canon files, and prior
   entries/BATONs untouched — `git diff --stat main` confirms the
   scope.
+- **Addendum v3, Commander's-eye findings, applied on this same
+  branch/PR (supersedes v2):** the pipeline gained an inline layer —
+  **inline pencil spans** (a closed `[...]` pair mid-line renders as
+  its own mono/dim span, line-scoped, multiple pairs per line each
+  their own span, unclosed `[`/stray `]` staying literal ink; a
+  line-start `[` still opens a pencil BLOCK, unchanged) — and the
+  inline precedence law extends A1 downward: spans are extracted
+  BEFORE markdown parses what's left of the line, so an emphasis pair
+  cannot cross a span boundary and machine voices (spans, pencil
+  blocks, meta lines) are markdown-verbatim everywhere, never parsed.
+  Scene break loosened to any run of 3+ hyphens alone on a line
+  (whitespace-tolerant). The resume snippet (A4) now also strips
+  inline pencil spans, not just block-level ones. The shortcut sheet's
+  insertion semantics were corrected to match the ratified rules
+  exactly: Bold/Italic wrap the stored selection; Heading/Quote/List/
+  Meta/Pencil-block **prefix a fresh line** when the caret is mid-text
+  rather than injecting the marker mid-sentence (extracted into a new
+  pure function, `lib/markerInsertion.ts`, so each rule is unit-tested
+  directly rather than only through the DOM); Scene break isolates
+  onto its own line, asymmetrically — no leading newline needed at the
+  very start of the content, but a trailing one is always added even
+  at the very end, because without it whatever gets typed next would
+  land on the scene-break's own line and re-break its "nothing else on
+  this line" contract. Meta already triggered at line start only under
+  the original pipeline; a test now asserts it explicitly (a trailing
+  `//` elsewhere in a line stays literal ink). 21 new tests added
+  (41 → 62), all green; visual pass repeated on a fresh instance of the
+  same disclosed-and-removed harness, confirming the inline span, the
+  loosened scene break, and both corrected insertion behaviors by
+  direct DOM inspection. Round-trip law re-verified unaffected — none
+  of this touches storage or export, rendering only.
 
 >> BATON
-The Scribe's Lap ships on `lap-4-scribe`: markdown + the writing
-convention render everywhere prose shows (river, resume brief), export
-stays raw, the "markdown ok" hint is now a working shortcut sheet.
-41/41 tests green, build clean, lint clean, visual pass done and the
-harness removed. PR not yet opened this session — owed next: open the
-PR, Tower certification (raw pull), Commander's eye on the preview,
-Commander-approved `--ff-only` merge. Commander ruled trial start
-waits on this lap — sequencing, not delay: once merged, the next
-things owed are the christening (trial campaign named) and trial
-start. Codex and Atlas remain honest minimal placeholders, unchanged
-this lap, still owed their own laps.
-HARNESS: 41 tests green · `npm run build` clean · `npm run lint` clean
+The Scribe's Lap ships on `lap-4-scribe` / PR #8 — Addendum v3 applied
+on the same branch after the Commander's-eye pass on the original v2
+build: inline pencil spans, the loosened scene-break rule, corrected
+shortcut-sheet insertion semantics (line-prefix-on-fresh-line,
+isolated scene break), and the resume snippet stripping inline spans
+too. 62/62 tests green, build clean, lint clean, visual pass repeated
+and the harness removed again. Owed next: push this amendment commit,
+confirm CI green on PR #8, Tower certification (raw pull), Commander's
+eye on the refreshed preview, Commander-approved `--ff-only` merge.
+Commander ruled trial start waits on this lap — sequencing, not delay:
+once merged, the next things owed are the christening (trial campaign
+named) and trial start. Codex and Atlas remain honest minimal
+placeholders, unchanged this lap, still owed their own laps.
+HARNESS: 62 tests green · `npm run build` clean · `npm run lint` clean
 · last full eval n/a (no AI) · signals n/a

@@ -154,7 +154,7 @@ export function Chronicle() {
   }
 
   function handlePickShortcut(shortcut: Shortcut) {
-    composerRef.current?.insertAtRange(shortcutSelectionRef.current, shortcut.before, shortcut.after);
+    composerRef.current?.insertMarker(shortcutSelectionRef.current, shortcut.insertion);
     setShortcutSheetOpen(false);
   }
 

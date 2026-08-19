@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { applyMarkerInsertion, type MarkerInsertion, type SelectionRange } from "@/lib/markerInsertion";
 
 const DEBOUNCE_MS = 500;
 
@@ -12,13 +13,13 @@ function titleStorageKey(draftKey: string) {
   return `${draftKey}:title`;
 }
 
-export type SelectionRange = { start: number; end: number };
+export type { SelectionRange };
 
 export type DraftComposerHandle = {
   /** Captures the textarea's current selection — call before it can blur. */
   getSelectionRange(): SelectionRange;
-  /** Wraps `range` with before/after (or inserts at the caret if empty). */
-  insertAtRange(range: SelectionRange, before: string, after: string): void;
+  /** Applies a shortcut-sheet marker to the stored `range` (Addendum v3 F5). */
+  insertMarker(range: SelectionRange, insertion: MarkerInsertion): void;
 };
 
 /**
@@ -82,12 +83,9 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
         end: el.selectionEnd ?? fallback.end,
       };
     },
-    insertAtRange(range, before, after) {
-      const { start, end } = range;
-      const selected = content.slice(start, end);
-      const insertion = before + selected + after;
-      const newContent = content.slice(0, start) + insertion + content.slice(end);
-      pendingCaretRef.current = selected.length > 0 ? start + insertion.length : start + before.length;
+    insertMarker(range, insertion) {
+      const { content: newContent, caret } = applyMarkerInsertion(content, range, insertion);
+      pendingCaretRef.current = caret;
       handleContentChange(newContent);
     },
   }));

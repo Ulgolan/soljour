@@ -106,6 +106,12 @@ function InlineView({ nodes }: { nodes: InlineNode[] }) {
     <>
       {nodes.map((node, i) => {
         if (node.type === "text") return <span key={i}>{node.text}</span>;
+        if (node.type === "pencil")
+          return (
+            <span key={i} className="font-mono text-[0.92em] text-[var(--text-meta-line)]">
+              {node.text}
+            </span>
+          );
         if (node.type === "bold")
           return (
             <strong key={i} className="font-semibold">

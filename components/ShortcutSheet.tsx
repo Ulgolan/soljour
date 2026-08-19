@@ -1,27 +1,32 @@
 "use client";
 
+import type { MarkerInsertion } from "@/lib/markerInsertion";
+
 /**
  * The tappable "markdown ok" hint's destination. Same sheet grammar as
- * export/campaign panels, canon palette, mono labels. Each row inserts
- * its literal marker at the composer's stored selection (wrapping it
- * where non-empty) via the row's own `before`/`after` pair.
+ * export/campaign panels, canon palette, mono labels.
+ *
+ * Insertion semantics (Addendum v3 F5): Bold/Italic WRAP the stored
+ * selection (empty selection: insert the pair, caret between).
+ * Heading/Quote/List/Meta/Pencil block PREFIX the line — a fresh
+ * prefixed line is started when the caret is mid-text, never a
+ * trailing marker. Scene break is isolated onto its own line.
  */
 export type Shortcut = {
   name: string;
   marker: string;
-  before: string;
-  after: string;
+  insertion: MarkerInsertion;
 };
 
 export const SHORTCUTS: Shortcut[] = [
-  { name: "Bold", marker: "**", before: "**", after: "**" },
-  { name: "Italic", marker: "*", before: "*", after: "*" },
-  { name: "Heading", marker: "#", before: "# ", after: "" },
-  { name: "Quote", marker: ">", before: "> ", after: "" },
-  { name: "List", marker: "-", before: "- ", after: "" },
-  { name: "Pencil block", marker: "[", before: "[", after: "" },
-  { name: "Meta note", marker: "//", before: "// ", after: "" },
-  { name: "Scene break", marker: "---", before: "---", after: "" },
+  { name: "Bold", marker: "**", insertion: { kind: "wrap", before: "**", after: "**" } },
+  { name: "Italic", marker: "*", insertion: { kind: "wrap", before: "*", after: "*" } },
+  { name: "Heading", marker: "#", insertion: { kind: "linePrefix", prefix: "# " } },
+  { name: "Quote", marker: ">", insertion: { kind: "linePrefix", prefix: "> " } },
+  { name: "List", marker: "-", insertion: { kind: "linePrefix", prefix: "- " } },
+  { name: "Pencil block", marker: "[", insertion: { kind: "linePrefix", prefix: "[" } },
+  { name: "Meta note", marker: "//", insertion: { kind: "linePrefix", prefix: "// " } },
+  { name: "Scene break", marker: "---", insertion: { kind: "isolatedLine", text: "---" } },
 ];
 
 export function ShortcutSheet({
