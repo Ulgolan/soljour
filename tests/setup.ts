@@ -32,3 +32,8 @@ Object.defineProperty(globalThis, "localStorage", {
   configurable: true,
   value: new MemoryStorage(),
 });
+
+// jsdom does not implement scrollIntoView.
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = function scrollIntoView() {};
+}

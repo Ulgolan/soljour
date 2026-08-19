@@ -570,3 +570,97 @@ main push-run to conclusion and report it (Entry #10 standing rule).
 Owed after green: nothing but Lap 3 — bake-off winner → Figma canon →
 Ignition Key #3.
 HARNESS: 5 tests green (post-fix, stress-verified) · last full eval n/a (no AI) · signals n/a
+
+---
+
+## Entry #13 — 2026-08-20 — Lap 3: The Chronicle ships (proof surface retired)
+
+**Session:** Hands (Claude Code), branch `lap-3-chronicle` off main tip
+`4404705`, executing Ignition Key #3.
+
+- **Incident #2 closure confirmed in files:** main push-run `32059905497`
+  verified GREEN at `4404705` (`gh run view`, conclusion: success) — the
+  standing-rule debt from Tower Session 3 (Entry #10's "report every
+  push-run conclusion") is discharged by this line existing here, not
+  only in a disposable chat.
+- **Lap 3 scope** as ruled in Entry #11 (designed Journal surface,
+  cold-open resume brief, minimal `threads` table), plus two Commander
+  ratifications beyond that original ruling: the export control ships
+  **working** in this lap (pulled forward from the Entry #11 hard-gate
+  at Lap 4) and `entries.title` ships as a real column, not deferred.
+  Design canon committed at `design/chronicle-canon.{html,pdf}` — both
+  files verified non-empty and marker-checked (`FIRST OPEN`, `#6F8F6A`,
+  each present exactly once) before any implementation began. Taste
+  canon, one line: past writing owns the screen; elegance is chrome
+  deleted; feed grammar, not tool grammar.
+- **Migration `0002_threads_and_titles`** applied via Supabase MCP:
+  `threads` table (owner-only RLS matching 0001's authenticated-only
+  pattern, no DELETE policy — resolution is a status flip, never a
+  delete) + `entries.title` nullable column. `get_advisors` (security)
+  post-migration: clean — the only finding is a pre-existing, unrelated
+  auth warning (leaked-password protection), out of this lap's scope.
+- **The Chronicle** ships as the campaign surface, replacing ProofSurface:
+  single-tree responsive layout (river, resume brief, composer, nav all
+  render once; CSS grid repositions the brief into a sticky left rail
+  at the desktop breakpoint — no duplicated markup, "same single scroll,
+  same pinned composer" law held by construction, not by two copies).
+  Cold open scrolls to the river's bottom via `scrollIntoView` on a
+  sentinel node. FIRST OPEN invitation replaces the brief+river entirely
+  when a campaign has zero entries and zero threads. Threads: born from
+  the dashed "+" row, committed on Enter or ADD, resolved threads stay
+  rendered (struck, accent check) — no thread deletion exists anywhere.
+  Export sheet ships live: `generateCampaignMarkdown` (pure function,
+  unit-tested) produces the whole campaign — title, every entry in
+  order, then every thread with status — downloaded client-side as
+  `<slug>.md`. Codex/Atlas route to an honest minimal placeholder
+  ("arrives with its lap") — a real destination, not a dead tab.
+- **The caged hydration-clobber fix (Entry #12) resolved, not just
+  reguarded:** DraftComposer now seeds content and title synchronously
+  from `localStorage` via `useState`'s lazy initializer. There is no
+  post-mount hydration effect left in the component at all — the class
+  of bug where hydration lands after the user has started typing and
+  stomps their input is abolished by construction. Proven in
+  `tests/draft-composer.test.tsx`: a stale stored draft is restored on
+  mount, then typed-over content is shown to survive immediately and
+  to be what persists and restores on remount — never reverted to the
+  stale value.
+- **Sibling-audit (Entry #12 doctrine — no call-order-counting mocks,
+  no assertions racing unflushed effects), verdict: clean.**
+  `tests/auth-gate.test.tsx` and `tests/skeleton.test.tsx` carry
+  neither anti-pattern — mocks are routed by resolved value, not call
+  order, and assertions use `findBy*` or explicit `act`-wrapped flushes.
+  No changes made to either file. One flake WAS found and fixed during
+  this lap's own new test work: `tests/threads.test.tsx`'s resolve
+  assertion initially raced the mocked update promise; fixed by
+  flushing it explicitly inside `act` rather than trusting
+  `findByText`'s default retry window.
+- **ProofSurface retired with honors** — `components/ProofSurface.tsx`
+  and `tests/proof-surface.test.tsx` deleted, exactly as Entry #12
+  anticipated. It did its job: it is the reason the hydration-clobber
+  class of bug was caught and caged before it ever reached a designed
+  surface.
+- **Logged discrepancy (Hard Rule #4):** the old ProofSurface had an
+  inline "sign out" control; canon frame states show no such control
+  anywhere in the Chronicle header. Matched canon exactly rather than
+  preserving the old chrome — sign-out is currently reachable only by
+  clearing the session outside the app. Flagging for the Commander's
+  eye; easy to re-add in a later lap if wanted.
+- **Visual verification:** could not exercise the real authenticated
+  app (no login credentials available to Hands, and guessing them is
+  out of bounds). Built a temporary, uncommitted preview harness
+  (mocked Supabase client + a throwaway `/devpreview` route) to check
+  every canon frame — first-open, living river, composer idle/focused,
+  sync line both states, export sheet, desktop left-rail reflow,
+  Codex/Atlas placeholders — against the design canon. All matched.
+  Harness fully removed before commit; diff scope is exactly migration
+  + `app/` + `components/` + `lib/` + `tests/` + `design/` + this file.
+
+>> BATON
+The Chronicle ships on `lap-3-chronicle`, unmerged (Hard Rule #2 —
+Tower certification, then Commander's eye, then Commander-approved
+merge). Ready for the Commander's eye against the live app once he
+signs in — Hands could not do this itself (no credentials, declined
+to guess). Owed next: Tower certification of this PR; Commander's-eye
+pass on the live preview; then Codex and Atlas real laps.
+HARNESS: 16 tests green (5/5 local runs) · `npm run build` clean ·
+`npm run lint` clean · last full eval n/a (no AI) · signals n/a
