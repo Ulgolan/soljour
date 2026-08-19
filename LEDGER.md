@@ -654,13 +654,46 @@ HARNESS: 5 tests green (post-fix, stress-verified) · last full eval n/a (no AI)
   Codex/Atlas placeholders — against the design canon. All matched.
   Harness fully removed before commit; diff scope is exactly migration
   + `app/` + `components/` + `lib/` + `tests/` + `design/` + this file.
+- **Pre-merge codicil — Commander's-eye finding (Key #3 Addendum v2,
+  Tribunal-corrected, supersedes v1), fixed on this same branch:**
+  with ≥1 campaign existing there was no path to create or switch
+  campaigns at all — `CampaignForm` only ever rendered at zero
+  campaigns, which would have blocked the live-fire christening
+  outright. Caught at the Commander's-eye pass before merge, not
+  after. Fix: the campaign name/system-label in the header is now
+  tappable, opening a panel — list of campaigns (current one marked,
+  tap to switch) plus the unmodified Lap-2 `CampaignForm` to create
+  and switch to a new one immediately. Declared **utility-grade** in
+  these files as instructed: functional, canon-palette, same sheet
+  grammar as export, no independent design pass — a candidate for
+  real design in the campaign-panel lap. Selection persists in
+  `localStorage` (`soljour:selected-campaign`), falling back to the
+  most recently created campaign when absent or invalid. **Draft
+  isolation is by construction, not by guard** (the Tribunal's
+  mandatory finding): `DraftComposer` renders with `key={campaign.id}`,
+  so switching campaigns remounts it outright — its lazy-initializer
+  re-seeds cleanly from the newly selected campaign's own storage key,
+  with no hydration effect anywhere that could leak or clobber another
+  campaign's draft. Entries and threads are now scoped by `campaign_id`
+  at render time rather than cleared with a `setState` in an effect
+  (the latter is also an anti-pattern React itself flags) — so a
+  campaign switch can never flash the previous campaign's data either.
+  Five results, all green in `tests/campaign-panel.test.tsx`: **(1)**
+  create → new campaign selected immediately; **(2)** switch → river
+  and threads swap to the newly selected campaign; **(3)** switching
+  to an empty campaign renders the first-open invitation, never an
+  empty card; **(4)** selection survives remount via `localStorage`;
+  **(5)** draft isolation — typed in A, B's composer opens clean, A's
+  draft is restored intact on return, B's storage was never touched.
 
 >> BATON
 The Chronicle ships on `lap-3-chronicle`, unmerged (Hard Rule #2 —
 Tower certification, then Commander's eye, then Commander-approved
-merge). Ready for the Commander's eye against the live app once he
-signs in — Hands could not do this itself (no credentials, declined
-to guess). Owed next: Tower certification of this PR; Commander's-eye
-pass on the live preview; then Codex and Atlas real laps.
-HARNESS: 16 tests green (5/5 local runs) · `npm run build` clean ·
+merge). The campaign-selection gap the Commander's eye caught pre-merge
+is closed on this same branch — the christening path now exists.
+Ready for the Commander's eye against the live app once he signs in —
+Hands could not do this itself (no credentials, declined to guess).
+Owed next: Tower certification of this PR; Commander's-eye pass on the
+live preview; then Codex and Atlas real laps.
+HARNESS: 21 tests green (5/5 local runs) · `npm run build` clean ·
 `npm run lint` clean · last full eval n/a (no AI) · signals n/a

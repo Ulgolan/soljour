@@ -16,8 +16,12 @@ import {
   type Thread,
 } from "@/lib/markdown";
 
+const SELECTED_CAMPAIGN_KEY = "soljour:selected-campaign";
+
 export function Chronicle() {
-  const [campaign, setCampaign] = useState<Campaign | null | undefined>(undefined);
+  const [campaigns, setCampaigns] = useState<Campaign[] | undefined>(undefined);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [campaignPanelOpen, setCampaignPanelOpen] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [threads, setThreads] = useState<Thread[]>([]);
   const [syncState, setSyncState] = useState<"synced" | "unsynced">("synced");
@@ -26,15 +30,22 @@ export function Chronicle() {
   const riverEndRef = useRef<HTMLDivElement>(null);
   const hasScrolledRef = useRef(false);
 
+  const campaign = campaigns?.find((c) => c.id === selectedCampaignId) ?? null;
+
   useEffect(() => {
     let active = true;
     supabase
       .from("campaigns")
       .select("id, name, system_label")
       .order("created_at", { ascending: true })
-      .limit(1)
       .then(({ data }) => {
-        if (active) setCampaign(data?.[0] ?? null);
+        if (!active) return;
+        const list = data ?? [];
+        setCampaigns(list);
+        if (list.length === 0) return;
+        const stored = window.localStorage.getItem(SELECTED_CAMPAIGN_KEY);
+        const mostRecent = list[list.length - 1].id;
+        setSelectedCampaignId(stored && list.some((c) => c.id === stored) ? stored : mostRecent);
       });
     return () => {
       active = false;
@@ -66,10 +77,20 @@ export function Chronicle() {
   }, [campaign]);
 
   useEffect(() => {
+    hasScrolledRef.current = false;
+  }, [campaign?.id]);
+
+  useEffect(() => {
     if (hasScrolledRef.current || !riverEndRef.current || entries.length === 0) return;
     riverEndRef.current.scrollIntoView({ block: "end" });
     hasScrolledRef.current = true;
   }, [entries]);
+
+  function selectCampaign(id: string) {
+    setSelectedCampaignId(id);
+    window.localStorage.setItem(SELECTED_CAMPAIGN_KEY, id);
+    setCampaignPanelOpen(false);
+  }
 
   async function handleCreateCampaign(name: string, systemLabel: string) {
     const { data, error } = await supabase
@@ -77,7 +98,10 @@ export function Chronicle() {
       .insert({ name, system_label: systemLabel || null })
       .select("id, name, system_label")
       .single();
-    if (!error && data) setCampaign(data);
+    if (!error && data) {
+      setCampaigns((prev) => [...(prev ?? []), data]);
+      selectCampaign(data.id);
+    }
   }
 
   async function handleSave(content: string, title: string): Promise<boolean> {
@@ -118,7 +142,11 @@ export function Chronicle() {
 
   function handleExportDownload() {
     if (!campaign) return;
-    const markdown = generateCampaignMarkdown(campaign, entries, threads);
+    const markdown = generateCampaignMarkdown(
+      campaign,
+      entries.filter((e) => e.campaign_id === campaign.id),
+      threads.filter((t) => t.campaign_id === campaign.id),
+    );
     const blob = new Blob([markdown], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -128,7 +156,7 @@ export function Chronicle() {
     URL.revokeObjectURL(url);
   }
 
-  if (campaign === undefined) {
+  if (campaigns === undefined) {
     return (
       <p className="px-6 py-10 text-center font-mono text-xs text-[var(--text-inactive-nav)]">
         loading…
@@ -136,20 +164,28 @@ export function Chronicle() {
     );
   }
 
-  if (campaign === null) {
+  if (campaigns.length === 0 || !campaign) {
     return <CampaignForm onCreate={handleCreateCampaign} />;
   }
 
-  const isEmpty = entries.length === 0 && threads.length === 0;
-  const lastEntry = entries[entries.length - 1];
-  const placeholder = entries.length === 0 ? "Begin the chronicle…" : "Continue the chronicle…";
+  // Scoped by campaign_id at render time rather than cleared in an effect:
+  // switching campaigns can never flash the previous campaign's data,
+  // because a stale entry/thread simply fails the filter until the fresh
+  // fetch for the newly selected campaign lands.
+  const visibleEntries = entries.filter((e) => e.campaign_id === campaign.id);
+  const visibleThreads = threads.filter((t) => t.campaign_id === campaign.id);
+
+  const isEmpty = visibleEntries.length === 0 && visibleThreads.length === 0;
+  const lastEntry = visibleEntries[visibleEntries.length - 1];
+  const placeholder =
+    visibleEntries.length === 0 ? "Begin the chronicle…" : "Continue the chronicle…";
 
   const whereYouWere = !isEmpty && (
     <WhereYouWere
       expanded={whereYouWereExpanded}
       onToggle={() => setWhereYouWereExpanded((v) => !v)}
       lastEntry={lastEntry}
-      threads={threads}
+      threads={visibleThreads}
       onResolve={handleResolveThread}
       onAdd={handleAddThread}
     />
@@ -161,7 +197,12 @@ export function Chronicle() {
   // same pinned composer, never two copies of the same control.
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col lg:grid lg:max-w-4xl lg:grid-cols-[16rem_1fr] lg:gap-x-8 lg:gap-y-6 lg:px-6 lg:py-6">
-      <ChronicleHeader campaign={campaign} onExport={() => setExportOpen(true)} className="lg:col-span-2" />
+      <ChronicleHeader
+        campaign={campaign}
+        onExport={() => setExportOpen(true)}
+        onOpenCampaigns={() => setCampaignPanelOpen(true)}
+        className="lg:col-span-2"
+      />
 
       {whereYouWere && (
         <div className="px-5 pt-4 lg:col-start-1 lg:row-start-2 lg:self-start lg:px-0 lg:pt-0 lg:sticky lg:top-6">
@@ -173,13 +214,14 @@ export function Chronicle() {
         {isEmpty ? (
           <FirstOpenInvitation />
         ) : (
-          entries.map((entry) => <EntryCard key={entry.id} entry={entry} />)
+          visibleEntries.map((entry) => <EntryCard key={entry.id} entry={entry} />)
         )}
         <div ref={riverEndRef} />
       </div>
 
       <div className="sticky bottom-0 flex flex-col gap-2 border-t border-[var(--structural-border)] bg-[var(--surface)] px-5 py-2.5 lg:col-start-2 lg:row-start-3 lg:mx-auto lg:w-full lg:max-w-[68ch] lg:rounded-xl lg:border">
         <DraftComposer
+          key={campaign.id}
           draftKey={`soljour:draft:${campaign.id}`}
           placeholder={placeholder}
           onSave={handleSave}
@@ -193,10 +235,20 @@ export function Chronicle() {
       {exportOpen && (
         <ExportSheet
           campaign={campaign}
-          entries={entries}
-          threads={threads}
+          entries={visibleEntries}
+          threads={visibleThreads}
           onClose={() => setExportOpen(false)}
           onDownload={handleExportDownload}
+        />
+      )}
+
+      {campaignPanelOpen && (
+        <CampaignPanel
+          campaigns={campaigns}
+          selectedId={campaign.id}
+          onSelect={selectCampaign}
+          onCreate={handleCreateCampaign}
+          onClose={() => setCampaignPanelOpen(false)}
         />
       )}
     </div>
@@ -206,10 +258,12 @@ export function Chronicle() {
 function ChronicleHeader({
   campaign,
   onExport,
+  onOpenCampaigns,
   className = "",
 }: {
   campaign: Campaign;
   onExport: () => void;
+  onOpenCampaigns: () => void;
   className?: string;
 }) {
   return (
@@ -218,7 +272,7 @@ function ChronicleHeader({
     >
 
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <button type="button" onClick={onOpenCampaigns} className="text-left">
           <h1 className="font-serif text-[20px] tracking-[.005em] text-[var(--text-primary)]">
             {campaign.name}
           </h1>
@@ -227,7 +281,7 @@ function ChronicleHeader({
               {campaign.system_label}
             </div>
           )}
-        </div>
+        </button>
         <button
           type="button"
           onClick={onExport}
@@ -349,6 +403,63 @@ function EntryCard({ entry }: { entry: Entry }) {
         </p>
       ))}
     </article>
+  );
+}
+
+/**
+ * Utility-grade: bottom sheet on mobile, small anchored dropdown on
+ * desktop — same sheet grammar as export, no independent design pass.
+ * Candidate for a proper design in the campaign-panel lap.
+ */
+function CampaignPanel({
+  campaigns,
+  selectedId,
+  onSelect,
+  onCreate,
+  onClose,
+}: {
+  campaigns: Campaign[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+  onCreate: (name: string, systemLabel: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--sheet-scrim)] lg:items-start lg:justify-start lg:bg-transparent"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-t-[18px] bg-[var(--nav-track)] px-5 py-6 lg:ml-6 lg:mt-24 lg:w-72 lg:rounded-xl lg:border lg:border-[var(--structural-border)] lg:py-4"
+      >
+        <div className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-secondary-prose)]">
+          Campaigns
+        </div>
+        <div className="mt-3 flex flex-col gap-1">
+          {campaigns.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onSelect(c.id)}
+              className={`flex flex-col rounded-lg px-2.5 py-2 text-left ${
+                c.id === selectedId ? "bg-[var(--active-pill)]" : ""
+              }`}
+            >
+              <span className="font-serif text-[15px] text-[var(--text-primary)]">{c.name}</span>
+              {c.system_label && (
+                <span className="font-mono text-[9.5px] uppercase tracking-[.14em] text-[var(--text-system-label)]">
+                  {c.system_label}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="mt-4 border-t border-[var(--hairline)] pt-2">
+          <CampaignForm onCreate={onCreate} />
+        </div>
+      </div>
+    </div>
   );
 }
 
