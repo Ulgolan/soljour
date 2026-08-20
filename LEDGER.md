@@ -1041,3 +1041,168 @@ Commander-approved `--ff-only` merge. The christening (queued since
 Entry #15) still waits behind this lap.
 HARNESS: 78 tests green · `npm run build` clean · `npm run lint` clean
 · last full eval n/a (no AI) · signals n/a
+
+## Entry #17 — 2026-08-20 — Lap 6: Pen and Eraser (edit, delete, soft delete)
+
+**Session:** Hands (Claude Code, Sonnet 5), branch `lap-6-pen-and-eraser`
+off main tip `52f3b3c` (verified — exact match, no gap since Entry
+#16's codicil), executing the curation-rights ignition key.
+
+- **Owed record (Entry #10's standing rule):** main push-run
+  `32373341137` verified GREEN at `52f3b3c` (`gh run view`, conclusion:
+  success) before branch cut.
+- **Commander ruling (vi), 2026-08-20:** merge mechanics for this lap
+  delegated to Hands — the decision of when/how to open the PR and
+  request certification is the Commander's to make once Hands reports
+  green; Hands still never merges (Hard rule 2 stands).
+- **Commander ruling (vii), 2026-08-20:** this curation lap gates the
+  christening. A Tribunal ran on scope/sequencing for Lap 6; its
+  recommended sequencing was overruled by the throne, but the
+  soft-delete shape (nullable `deleted_at`, no delete policies, no
+  restore UI — recovery is dashboard/SQL) and the collision law
+  (edit gets its own namespaced draft buffer, never touching the
+  new-entry draft keys) were adopted from its findings.
+- **Migration (file only, not applied — Tower certifies, applies via
+  MCP):** `supabase/migrations/0003_soft_delete.sql` adds a nullable
+  `deleted_at timestamptz` to both `campaigns` and `entries`. No
+  DELETE policies, no cascades, no triggers — soft delete rides the
+  existing UPDATE policies by design (Data law: every delete
+  undoable). **Reported here prominently, first, per the exit
+  condition — UI work below depends on this column existing.**
+- **Every read now filters `deleted_at is null`.** Both the campaigns
+  list query and the entries-for-campaign query (`Chronicle.tsx`) gained
+  `.is("deleted_at", null)`. Export, the river, the resume snippet, and
+  the day-group walk-back all inherit the filter through `entries`/
+  `campaigns` state — none of `lib/markdown.ts`, `lib/prose.ts`,
+  `lib/river.ts`, or `lib/markerInsertion.ts` were touched. **Transient
+  note, not a bug:** until this branch merges, a soft-delete made in
+  the preview still shows on production main, which has no filter yet.
+- **Entry affordance (A1):** a quiet mono "⋯" glyph, absolutely
+  positioned top-right of each `EntryCard` — the only tap target on the
+  card; the title line and `Prose` body stay inert, exactly as ruled.
+  Opens `EntrySheet` in the existing sheet grammar: EDIT / DELETE /
+  cancel. DELETE steps to a confirm inside the *same* sheet
+  (`confirmingDelete` local state) rather than opening a second one;
+  only the confirm click fires `UPDATE entries SET deleted_at = now()`,
+  after which the entry is filtered out of local state and leaves the
+  river with no reload.
+- **Edit mode and the collision law (A3, A4):** entering edit
+  (`EntrySheet` → EDIT) points the *same* bottom `DraftComposer` at a
+  namespaced buffer — `soljour:edit:<entryId>:content` / `:title` —
+  instead of `soljour:draft:<campaignId>:...`, by branching the
+  `draftKey` prop at the call site in `Chronicle.tsx`; `DraftComposer`
+  itself needed no debounce/flush changes at all, because both draft
+  buffer flavors are just different keys running through the one
+  existing write-through mechanism from Lap 5 (blur, `visibilitychange`
+  → hidden, and the 500ms debounce all keep working unmodified). Two
+  new composer props make edit mode possible: `initialContent` /
+  `initialTitle` (the lazy-`useState` initializer now falls back to
+  these when no edit buffer exists yet — "seed from the edit buffer if
+  present, crash resume for free, else from the entry"; the NN#1
+  seeding construction itself — read-storage-first, before first paint
+  — is byte-identical) and `onCancel` (its mere presence is what marks
+  edit mode in the UI: it renders the "Editing entry / Cancel" row and
+  swaps the Save button's `aria-label` to "Save edit"). Cancel clears
+  only the edit-buffer keys and calls `onCancel`, which clears
+  `editingEntryId` in `Chronicle.tsx` — the composer's `key` prop then
+  changes back to `campaign.id`, forcing a full remount that re-seeds
+  from the untouched new-entry draft. Save (`handleEditSave`, living
+  beside A3) issues `UPDATE content, title, updated_at = now()` —
+  explicit, since the schema carries no touch trigger — and never
+  touches `created_at`, so the entry keeps its day-group and river
+  position; on success it also clears `editingEntryId`, which is what
+  swaps the composer back to new-entry mode. Empty-content edit save is
+  blocked by the same `canSave` guard new-entry save already used — no
+  new validation code, an emptied entry is pointed at DELETE instead.
+  Pencil-only content (`[...]`) stays legal, unaffected by that guard.
+- **Campaign delete (A2):** `CampaignPanel`'s campaign rows split from
+  a single `<button>` into a select button plus a separate quiet
+  "Delete" text button (can't nest buttons), which opens
+  `CampaignDeleteConfirm`. Its counts are fetched **live** on open via
+  head-count queries (`.select("id", { count: "exact", head: true })`)
+  scoped to the campaign being deleted, never read from `entries`/
+  `threads` state — that state only ever covers the *selected*
+  campaign, and the campaign being deleted need not be it. Confirm
+  soft-deletes the campaign row only (children stay, hidden by the
+  existing campaign filter); if the deleted campaign was selected, the
+  most recent remaining campaign is selected via the same
+  `selectCampaign` path the initial-load fallback already used, else
+  `CampaignForm` shows and the stored selection key is removed.
+- **Anchors, verified before and after:** A1 `function EntryCard`, A2
+  `function CampaignPanel` (`Chronicle.tsx`), A3 `async function
+  handleSave` (`Chronicle.tsx`), A4 `async function handleSaveClick`
+  (`DraftComposer.tsx`) — each greps to exactly 1 in the final diff.
+  New functions (`handleEditSave`, `handleDeleteEntry`,
+  `handleDeleteCampaign`, `handleCancelEdit`) were named to never
+  collide with an anchor pattern as a substring, checked explicitly.
+- **Tests: 87 green (78 → 87).** New `tests/curation.test.tsx` (9
+  tests): edit save sets `updated_at` and never `created_at` and the
+  entry keeps its day header; empty-content edit save blocked (Save
+  control disabled, no update call); pencil-only content survives
+  cancel (not funneled into delete); **THE COLLISION TEST** — types a
+  new-entry draft and lets it flush, enters edit, types over it, fires
+  blur *and* `visibilitychange` → hidden mid-edit, asserts the edit
+  buffer took the flush while `soljour:draft:<id>:content` stayed
+  untouched, then cancels and asserts the edit buffer is cleared while
+  the new-entry draft is still exactly what it was; entry delete gates
+  on the confirm step (no update fires from Delete alone); delete
+  cancel at the confirm step never calls update; campaign-delete counts
+  come from the live head-count query and not from loaded state
+  (proven by deleting a campaign that was never loaded into `entries`/
+  `threads` state at all); fallback selection to the most recent
+  remaining campaign; deleting the last campaign shows `CampaignForm`
+  and clears the stored selection key. `tests/chronicle.test.tsx`,
+  `tests/campaign-panel.test.tsx`, `tests/shortcut-sheet.test.tsx`,
+  `tests/threads.test.tsx` (photograph retakes, +1 line each): their
+  shared `makeChain`/`makeScopedReadChain` test helpers gained `.is()`
+  so the now-filtered campaign/entry queries don't throw
+  `is is not a function` against the mock — no assertions changed, only
+  the mock surface the real query shape now touches. `npm run build`
+  and `npm run lint` both clean.
+- **Async-assertion lesson, worth keeping:** an early version of the
+  edit-save test used `fireEvent.click` + `vi.waitFor` outside `act`,
+  which passed the "update was called" check (query construction is
+  synchronous even though resolution isn't) but then intermittently
+  failed to find the resulting DOM text — a stale-node race, not a
+  real bug. Rewritten to match this repo's existing convention
+  (`campaign-panel.test.tsx`): wrap the click in
+  `await act(async () => { fireEvent.click(...); await
+  Promise.resolve() ×3; })` before asserting on settled state.
+- **Scope discipline:** `git diff --stat main` shows exactly
+  `components/Chronicle.tsx`, `components/DraftComposer.tsx` modified,
+  `supabase/migrations/0003_soft_delete.sql` and
+  `tests/curation.test.tsx` new, plus the four `.is()` test retakes
+  above — `lib/markdown.ts`, `lib/prose.ts`, `lib/river.ts`,
+  `lib/markerInsertion.ts`, `package.json`, and no Supabase credentials
+  anywhere, per the DO NOT list.
+- **Visual verification, honestly reported:** port 3000 was already
+  held by another chat's dev server for this same repo when Hands went
+  to preview — not fought for, per the same non-destructive default
+  that governs credential handling. Verification for this lap is
+  therefore test- and DOM-shape-level only (the 9 new tests above
+  render real component trees via Testing Library and assert on the
+  actual rendered structure); no live pixel screenshot or Commander-eye
+  pass has happened yet, and the composer/sheet gate remains behind
+  Supabase auth Hands does not hold credentials for, same as every
+  prior lap. **Handed off, outcome pending:** Commander signs in on his
+  own running preview, exercises edit / delete / campaign-delete live,
+  and judges the sheet grammar and the "⋯" glyph's discoverability —
+  the one part of this lap only his own eye can certify.
+
+>> BATON
+Pen and eraser ship on `lap-6-pen-and-eraser`: entry edit with its own
+collision-proof draft buffer sharing Lap 5's debounce/flush machinery,
+entry delete behind a glyph → sheet → confirm, campaign delete behind a
+live-counted confirm with fallback selection, and every read now
+honestly filtered to `deleted_at is null`. 87/87 tests green, build
+clean, lint clean, all four anchors land exactly once, diff scoped to
+exactly the instructed files plus four one-line test-mock retakes.
+Migration SQL (`0003_soft_delete.sql`) is file-only and needs Tower
+certification + Commander-authorized `apply_migration` before the
+preview's deletes/edits do anything but 404 against a missing column —
+**do this first**, everything else in this lap depends on it. Not yet
+pushed, no PR open, no CI run yet, no live Commander-eye pass — all
+owed next, in that order. The christening (queued since Entry #15,
+gated on this lap per ruling (vii)) still waits behind it.
+HARNESS: 87 tests green · `npm run build` clean · `npm run lint` clean
+· last full eval n/a (no AI) · signals n/a
