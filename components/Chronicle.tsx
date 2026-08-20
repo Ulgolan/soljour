@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { DraftComposer, type DraftComposerHandle, type SelectionRange } from "./DraftComposer";
@@ -10,10 +10,10 @@ import { SyncLine } from "./SyncLine";
 import { ThreadList } from "./ThreadList";
 import { CampaignForm } from "./CampaignForm";
 import { inkPlainText } from "@/lib/prose";
+import { groupEntriesByDay } from "@/lib/river";
 import {
   generateCampaignMarkdown,
   exportFilename,
-  formatEntryMeta,
   type Campaign,
   type Entry,
   type Thread,
@@ -194,7 +194,7 @@ export function Chronicle() {
   const visibleThreads = threads.filter((t) => t.campaign_id === campaign.id);
 
   const isEmpty = visibleEntries.length === 0 && visibleThreads.length === 0;
-  const lastEntry = visibleEntries[visibleEntries.length - 1];
+  const lastInkEntry = lastEntryWithInk(visibleEntries);
   const placeholder =
     visibleEntries.length === 0 ? "Begin the chronicle…" : "Continue the chronicle…";
 
@@ -202,12 +202,29 @@ export function Chronicle() {
     <WhereYouWere
       expanded={whereYouWereExpanded}
       onToggle={() => setWhereYouWereExpanded((v) => !v)}
-      lastEntry={lastEntry}
+      hasEntries={visibleEntries.length > 0}
+      lastInkEntry={lastInkEntry}
       threads={visibleThreads}
       onResolve={handleResolveThread}
       onAdd={handleAddThread}
     />
   );
+
+  // Day-group membership, precomputed once per render: the river below
+  // still walks visibleEntries directly (A1) rather than nesting group
+  // loops, so this is a lookup, not a second render pass.
+  const dayGroups = groupEntriesByDay(visibleEntries);
+  const dayLabelByEntryId = new Map<string, string>();
+  const hairlineBeforeEntryId = new Set<string>();
+  for (const group of dayGroups) {
+    group.entries.forEach((entry, i) => {
+      if (i === 0) {
+        dayLabelByEntryId.set(entry.id, group.label);
+      } else if (!entry.title) {
+        hairlineBeforeEntryId.add(entry.id);
+      }
+    });
+  }
 
   // Single tree, CSS-only reflow: on mobile everything stacks in DOM order
   // (header, brief, river, composer); at the desktop breakpoint the brief
@@ -228,11 +245,20 @@ export function Chronicle() {
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-6 px-5 py-4 lg:col-start-2 lg:row-start-2 lg:mx-auto lg:w-full lg:max-w-[68ch] lg:px-0 lg:py-0">
+      <div className="flex flex-1 flex-col gap-4 px-5 py-4 lg:col-start-2 lg:row-start-2 lg:mx-auto lg:w-full lg:max-w-[68ch] lg:px-0 lg:py-0">
         {isEmpty ? (
           <FirstOpenInvitation />
         ) : (
-          visibleEntries.map((entry) => <EntryCard key={entry.id} entry={entry} />)
+          visibleEntries.map((entry) => {
+            const dayLabel = dayLabelByEntryId.get(entry.id);
+            return (
+              <Fragment key={entry.id}>
+                {dayLabel && <DayHeader label={dayLabel} />}
+                {hairlineBeforeEntryId.has(entry.id) && <DayHairline />}
+                <EntryCard entry={entry} />
+              </Fragment>
+            );
+          })
         )}
         <div ref={riverEndRef} />
       </div>
@@ -376,17 +402,33 @@ function relativeDaysAgo(dateStr: string): string {
   return `${days} days ago`;
 }
 
+/**
+ * Walks backward to the newest entry with any ink at all (Lap 5): a
+ * pencil/meta-only entry doesn't have a story to quote, so newer such
+ * entries are skipped in favor of an older one that does. The date shown
+ * is that entry's own age, not "now" — the resume beat is intentionally
+ * as old as the last real writing.
+ */
+function lastEntryWithInk(entries: Entry[]): Entry | undefined {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    if (inkPlainText(entries[i].content)) return entries[i];
+  }
+  return undefined;
+}
+
 function WhereYouWere({
   expanded,
   onToggle,
-  lastEntry,
+  hasEntries,
+  lastInkEntry,
   threads,
   onResolve,
   onAdd,
 }: {
   expanded: boolean;
   onToggle: () => void;
-  lastEntry: Entry | undefined;
+  hasEntries: boolean;
+  lastInkEntry: Entry | undefined;
   threads: Thread[];
   onResolve: (id: string) => void;
   onAdd: (text: string) => void;
@@ -407,13 +449,19 @@ function WhereYouWere({
       </button>
       {expanded && (
         <div className="mt-3 flex flex-col gap-4">
-          {lastEntry && (
+          {lastInkEntry ? (
             <p className="font-serif text-[14.5px] italic leading-[1.62] text-[var(--text-resume-snippet)]">
-              “{snippet(lastEntry.content)}”
+              “{snippet(lastInkEntry.content)}”
               <span className="ml-2 font-mono text-[10px] not-italic text-[var(--text-meta-line)]">
-                — {relativeDaysAgo(lastEntry.created_at)}
+                — {relativeDaysAgo(lastInkEntry.created_at)}
               </span>
             </p>
+          ) : (
+            hasEntries && (
+              <p className="font-mono text-[11px] uppercase tracking-[.1em] text-[var(--text-meta-line)]">
+                Only dice and notes so far — no story written yet
+              </p>
+            )
           )}
           <ThreadList threads={threads} onResolve={onResolve} onAdd={onAdd} />
         </div>
@@ -422,15 +470,39 @@ function WhereYouWere({
   );
 }
 
+/**
+ * The day header (rendered once per group) already carries the date, so
+ * a titled entry shows only its title as the mono line; an untitled
+ * entry shows no label at all and relies on the day-group hairline for
+ * separation instead.
+ */
 function EntryCard({ entry }: { entry: Entry }) {
   return (
     <article className="flex flex-col gap-2">
-      <div className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-meta-line)]">
-        {formatEntryMeta(entry)}
-      </div>
+      {entry.title && (
+        <div className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-meta-line)]">
+          {entry.title}
+        </div>
+      )}
       <Prose content={entry.content} />
     </article>
   );
+}
+
+function DayHeader({ label }: { label: string }) {
+  return (
+    <div className="mt-4 font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-meta-line)] first:mt-0">
+      {label}
+    </div>
+  );
+}
+
+/**
+ * Quieter than the in-prose scene break (Prose.tsx's full-width `<hr>`):
+ * short and centered, so the two never read as the same signal.
+ */
+function DayHairline() {
+  return <hr className="mx-auto my-0 h-px w-8 border-0 bg-[var(--hairline)]" />;
 }
 
 /**

@@ -888,3 +888,148 @@ merge — then **THE CHRISTENING**: the trial campaign gets its name and
 the live-fire clock starts. Nothing else is queued ahead of it.
 HARNESS: 66 tests green · `npm run build` clean · `npm run lint` clean
 · last full eval n/a (no AI) · signals n/a
+
+---
+
+## Entry #16 — 2026-08-20 — Lap 5: The Legible River (day-grouped chronicle)
+
+**Session:** Hands (Claude Code, Sonnet), branch `lap-5-legible-river`
+off main tip `0988cbb` (verified — exact match, no gap since Entry
+#15's merge), executing Ignition Key #5.
+
+- **Owed record (Entry #10's standing rule):** main push-run
+  `32315226847` verified GREEN at `0988cbb` (`gh run view`, conclusion:
+  success) before branch cut.
+- **The river groups by local day.** New pure function
+  `lib/river.ts#groupEntriesByDay` buckets consecutive same-local-day
+  entries (`getFullYear`/`getMonth`/`getDate` — the device's clock, not
+  UTC) and labels each group `"DD MON"` in the existing mono meta
+  style. `Chronicle.tsx` still walks `visibleEntries.map` directly
+  (A1) rather than nesting a second render loop over groups — group
+  boundaries are precomputed into two lookups (day-label-by-entry-id,
+  hairline-before-entry-id) consulted inside that one map, so the
+  render stays a flat pass. Titled entries now show only their title
+  as the mono line (the day header already carries the date); untitled
+  entries show no label and, when they follow another entry within the
+  same day group, are separated by a short centered hairline
+  (`--hairline`, `w-8 mx-auto` — deliberately narrower and quieter than
+  Prose's full-width in-prose scene-break `<hr>`, so the two never read
+  as the same signal). Day-boundary spacing is clearly larger than
+  within-day spacing: the river container dropped from `gap-6` to
+  `gap-4` and `DayHeader` adds its own `mt-4` (`first:mt-0` so the very
+  first header doesn't double up) — day boundaries get gap+margin,
+  within-day entries get gap alone.
+- **Commander ruling (i), 2026-08-20 — local-day grouping over UTC:**
+  intentional divergence from the export header's day, which stays UTC
+  this lap (`lib/markdown.ts#formatEntryMeta` untouched, per the DO NOT
+  list) — a writer reads the river on the device that wrote it, so
+  "today" should match their clock, not the server's. Reconciling the
+  two is caged, not this lap's problem.
+- **The resume snippet walks back past silence.** `lastEntryWithInk`
+  (Chronicle.tsx) walks `visibleEntries` backward to the newest entry
+  whose `inkPlainText` is non-empty and quotes it with **its own**
+  `relativeDaysAgo` — a newer pencil- or meta-only entry is skipped
+  entirely, so the resume beat can legitimately read older than the
+  chronicle's actual last entry, by design. When no entry has ink
+  anywhere, the quote is replaced by an honest mono line, no quote
+  marks: "Only dice and notes so far — no story written yet" — wording
+  is a proposal, open at the Commander's-eye pass. `WhereYouWere`'s
+  props changed from a single `lastEntry` to `hasEntries` +
+  `lastInkEntry` to carry the three-way state (no entries / entries but
+  no ink / ink found).
+- **Commander ruling (ii), 2026-08-20 — flush-on-blur pulled into this
+  lap:** not in the original scope, pulled forward the same way Lap
+  3 pulled the export control forward (Entry #13) — logged here per
+  that same precedent rather than silently expanded. `DraftComposer`
+  now flushes the debounced draft to `localStorage` write-through (not
+  conditionally — always writes current `content`/`title`, always
+  clears any pending timer) on textarea blur and on
+  `document.visibilitychange` firing `"hidden"`. NN#1's seeding block
+  (the lazy-`useState`-initializer construction) is untouched — this is
+  write-path only, verified by diff scope.
+- **Composer auto-grow (A4):** the expanded textarea now resizes with
+  its own `scrollHeight` (reset to `"auto"` first so shrinking measures
+  correctly) instead of CSS `field-sizing` (unsupported on Safari),
+  capped by `max-h-[45dvh]` + `overflow-y-auto` — the `dvh` unit keeps
+  the cap keyboard-safe on mobile, where a static `vh` would ignore the
+  keyboard eating viewport space. The literal `rows={expanded ? 6 : 1}`
+  baseline stays in place unchanged (A4 lands once) — idle state is
+  untouched, growth only engages once `expanded` is true, and the
+  inline height is cleared back to `""` on collapse so a stale height
+  can't leak into the next idle render.
+- **Anchors, verified before and after:** A1 `visibleEntries.map`, A2
+  `function EntryCard`, A3 `function snippet` (Chronicle.tsx), A4
+  `rows={expanded ? 6 : 1}` (DraftComposer.tsx) — each greps to exactly
+  1 in the final diff.
+- **Tests: 78 green (66 → 78).** `tests/river.test.ts` (new, 7 tests):
+  `groupEntriesByDay` for a single day, a multi-day split preserving
+  order, a titled/untitled mix within one group, a local-midnight
+  boundary a minute apart, two same-calendar-day runs that must stay
+  separate because a different day sits between them, empty input, and
+  the `"DD MON"` label format. `tests/chronicle.test.tsx` (+3): the
+  snippet fallback chain — ink-last quotes normally, walk-back skips a
+  newer pencil-only entry and quotes the older ink entry with *its*
+  date, and the no-ink-anywhere honest fallback with no curly quotes —
+  all three scoped to the "Where you were" card's own subtree (not
+  `document.body`) so the river's legitimately-visible pencil/meta text
+  below can never false-positive the assertion. `tests/draft-composer.test.tsx`
+  (+2): blur flush and `visibilitychange` flush, both asserting the
+  write lands **without** advancing fake timers past the 500ms
+  debounce. No photograph retakes needed in either existing test file
+  — neither pinned a per-entry date label or a fixed `rows` value.
+  `tests/markdown.test.ts` untouched. `npm run build` and
+  `npm run lint` both clean (one transient `exhaustive-deps` warning on
+  `flushDraft` resolved by wrapping it in `useCallback`, not by
+  disabling the rule).
+- **Scope discipline:** `git diff --stat main` shows exactly
+  `components/Chronicle.tsx`, `components/DraftComposer.tsx`,
+  `tests/chronicle.test.tsx`, `tests/draft-composer.test.tsx` modified
+  plus `lib/river.ts` and `tests/river.test.ts` new — `lib/markdown.ts`,
+  `lib/prose.ts`, `lib/markerInsertion.ts`, and `supabase/` untouched,
+  per the DO NOT list.
+- **Visual verification, honestly reported:** the local dev preview is
+  gated behind Supabase auth; rather than handle or generate a
+  credential, the Commander was asked and signed in himself, then
+  stayed in the same live pane inspecting it concurrently — which made
+  several pixel screenshots come back blank (the automation and the
+  Commander's own navigation contending for the same tab). Verified
+  instead by DOM: `read_page`'s accessibility tree confirmed the day
+  headers, title-only/no-label entries, and walk-back quote rendering
+  exactly as designed on seeded data; a computed-style probe of the
+  composer (typed 40 lines programmatically, read back `style.height`,
+  `scrollHeight`, `getComputedStyle().maxHeight`, `overflowY`)
+  confirmed the grow-then-clamp-then-scroll mechanics precisely
+  (`rows` 1→6, inline height set past the cap, `clientHeight` held at
+  the `45dvh` max, `overflow-y: auto`). One clean pixel screenshot did
+  land early, showing correct bold/italic ink rendering, the day
+  header, and the walk-back quote styled as intended. The Commander's
+  own eye on the live pane is the real check for whether the hairline
+  reads as quieter than the scene break — the sanctioned fallback
+  (spacing-only) is one CSS class away if not.
+- **Preview seed data:** a dedicated `Lap 5 Preview` campaign
+  (`system_label: "River QA"`) was inserted directly via SQL into the
+  live Supabase project (not through `supabase/` migrations — schema
+  untouched) rather than touching either existing campaign (`test` or
+  `A new beginning`, the latter left completely alone on the chance it
+  is real trial-adjacent writing). Seven entries span 17/19/20 AUG:
+  a titled long entry + one untitled (17 AUG), three untitled entries
+  in a run (19 AUG), and a titled entry followed by a pencil+meta-only
+  entry as the newest (20 AUG) — covering every case the exit condition
+  asks for, including the walk-back demo live. Left in place so the
+  Vercel preview is seeded too; safe to delete anytime.
+
+>> BATON
+The Legible River ships on `lap-5-legible-river` — day-grouped entries
+with local-device boundaries, an honest walk-back resume snippet that
+skips silent (pencil/meta-only) entries, a write-through draft flush
+on blur/tab-hide, and a keyboard-safe auto-growing composer. 78/78
+tests green, build clean, lint clean, all four anchors land exactly
+once, diff scoped to exactly the files instructed. PR open, unmerged.
+Owed next: push this branch, open the PR, confirm CI green, Tower
+certification, then the Commander's-eye pass — specifically judging
+the day-group hairline against the in-prose scene break (fallback:
+spacing-only) and the no-ink-anywhere fallback wording — then
+Commander-approved `--ff-only` merge. The christening (queued since
+Entry #15) still waits behind this lap.
+HARNESS: 78 tests green · `npm run build` clean · `npm run lint` clean
+· last full eval n/a (no AI) · signals n/a

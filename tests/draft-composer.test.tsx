@@ -118,4 +118,36 @@ describe("DraftComposer — draft buffer (NN#1)", () => {
     expect(onSave).toHaveBeenCalledTimes(2);
     expect(textarea).toHaveValue("");
   });
+
+  it("flushes to localStorage on blur, without waiting out the debounce", () => {
+    vi.useFakeTimers();
+    const draftKey = "soljour:draft:test-campaign";
+    const onSave = vi.fn();
+    render(<DraftComposer draftKey={draftKey} placeholder={PLACEHOLDER} onSave={onSave} />);
+    const textarea = screen.getByPlaceholderText(PLACEHOLDER);
+
+    fireEvent.change(textarea, { target: { value: "the storm breaks" } });
+    // No vi.advanceTimersByTime — the 500ms debounce has not fired.
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBeNull();
+
+    fireEvent.blur(textarea);
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBe("the storm breaks");
+  });
+
+  it("flushes to localStorage on visibilitychange → hidden, without waiting out the debounce", () => {
+    vi.useFakeTimers();
+    const draftKey = "soljour:draft:test-campaign";
+    const onSave = vi.fn();
+    render(<DraftComposer draftKey={draftKey} placeholder={PLACEHOLDER} onSave={onSave} />);
+    const textarea = screen.getByPlaceholderText(PLACEHOLDER);
+
+    fireEvent.change(textarea, { target: { value: "the lantern goes out" } });
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBeNull();
+
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBe("the lantern goes out");
+  });
 });

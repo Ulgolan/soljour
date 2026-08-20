@@ -105,3 +105,68 @@ describe("Chronicle — honest failure state (no silent loss)", () => {
     expect(inserted[1]).toMatchObject({ content: "an untitled entry", title: null });
   });
 });
+
+describe("Chronicle — resume snippet walk-back (Lap 5)", () => {
+  afterEach(() => {
+    cleanup();
+    fromMock.mockReset();
+    window.localStorage.clear();
+  });
+
+  function daysAgoIso(days: number) {
+    return new Date(Date.now() - days * 86_400_000).toISOString();
+  }
+
+  function briefText() {
+    // Scoped to the "Where you were" card, not the whole page — the raw
+    // river below legitimately renders pencil/meta content that must
+    // never leak into the resume snippet specifically.
+    return screen.getByText("Where you were").closest("button")!.parentElement!.textContent ?? "";
+  }
+
+  function mockCampaignAndEntries(entries: Array<Record<string, unknown>>) {
+    fromMock.mockImplementation((table: string) => {
+      if (table === "campaigns") {
+        return makeChain({ data: [{ id: "c1", name: "Test Campaign", system_label: null }] });
+      }
+      if (table === "entries") {
+        return makeChain({ data: entries });
+      }
+      return makeChain({ data: [] });
+    });
+  }
+
+  it("quotes the newest entry when it has ink", async () => {
+    mockCampaignAndEntries([
+      { id: "1", campaign_id: "c1", title: null, content: "the party finds the door", created_at: daysAgoIso(2) },
+    ]);
+    render(<Chronicle />);
+    await screen.findByText("Where you were");
+    expect(briefText()).toContain("the party finds the door");
+    expect(briefText()).toContain("2 days ago");
+  });
+
+  it("walks back past a pencil-only newest entry to quote the last one with ink", async () => {
+    mockCampaignAndEntries([
+      { id: "1", campaign_id: "c1", title: null, content: "the party finds the door", created_at: daysAgoIso(5) },
+      { id: "2", campaign_id: "c1", title: null, content: "[rolled 14 vs DC 12]", created_at: daysAgoIso(0) },
+    ]);
+    render(<Chronicle />);
+    await screen.findByText("Where you were");
+    expect(briefText()).toContain("the party finds the door");
+    expect(briefText()).toContain("5 days ago");
+    expect(briefText()).not.toContain("rolled 14 vs DC 12");
+  });
+
+  it("shows an honest fallback, no quote marks, when no entry has ink anywhere", async () => {
+    mockCampaignAndEntries([
+      { id: "1", campaign_id: "c1", title: null, content: "[rolled 14 vs DC 12]", created_at: daysAgoIso(3) },
+      { id: "2", campaign_id: "c1", title: null, content: "// GM note to self", created_at: daysAgoIso(1) },
+    ]);
+    render(<Chronicle />);
+    await screen.findByText("Where you were");
+    expect(await screen.findByText(/no story written yet/i)).toBeInTheDocument();
+    expect(briefText()).not.toContain("“");
+    expect(briefText()).not.toContain("”");
+  });
+});

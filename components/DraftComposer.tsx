@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { applyMarkerInsertion, type MarkerInsertion, type SelectionRange } from "@/lib/markerInsertion";
 
 const DEBOUNCE_MS = 500;
@@ -60,6 +60,33 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
     }, DEBOUNCE_MS);
   }
 
+  // Write-through flush (Commander pull, Lap 5): a debounce timer is a bet
+  // that more keystrokes are coming. Blur and tab-hide are exactly the
+  // moments that bet can be wrong — connection loss, browser close, and
+  // backend outage all funnel through one of these two events, so the
+  // pending timer (if any) is cancelled and the current values are
+  // written immediately instead of waiting out the remaining debounce.
+  const flushDraft = useCallback(() => {
+    if (contentTimer.current) {
+      clearTimeout(contentTimer.current);
+      contentTimer.current = null;
+    }
+    if (titleTimer.current) {
+      clearTimeout(titleTimer.current);
+      titleTimer.current = null;
+    }
+    window.localStorage.setItem(contentStorageKey(draftKey), content);
+    window.localStorage.setItem(titleStorageKey(draftKey), title);
+  }, [content, title, draftKey]);
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === "hidden") flushDraft();
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [flushDraft]);
+
   // Runs after `content` (and the textarea's DOM value) has committed a
   // shortcut-sheet insertion, so the caret lands in the already-updated
   // text rather than racing the pending re-render.
@@ -114,6 +141,23 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
   const expanded = focused || content.length > 0;
   const canSave = content.trim().length > 0 && !saving;
 
+  // Auto-grow (A4): the textarea's own scrollHeight, not field-sizing
+  // (unsupported on Safari) — reset to auto first so shrinking (e.g. a
+  // paste undone) is measured correctly, not stuck at its tallest past
+  // height. CSS max-h-[45dvh] + overflow-y-auto below caps the visible
+  // growth and hands off to internal scroll; the dvh unit keeps the cap
+  // keyboard-safe on mobile, where the keyboard eats static vh.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    if (!expanded) {
+      el.style.height = "";
+      return;
+    }
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [content, expanded]);
+
   return (
     <div className="flex flex-col gap-2">
       {expanded && (
@@ -130,10 +174,13 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={() => {
+            setFocused(false);
+            flushDraft();
+          }}
           rows={expanded ? 6 : 1}
           placeholder={placeholder}
-          className={`flex-1 resize-none rounded-xl border bg-[var(--input-fill)] px-3 py-2.5 font-serif text-[15.5px] leading-[1.6] text-[var(--text-typing)] placeholder:text-[var(--text-quiet-button)] focus:outline-none ${
+          className={`max-h-[45dvh] flex-1 resize-none overflow-y-auto rounded-xl border bg-[var(--input-fill)] px-3 py-2.5 font-serif text-[15.5px] leading-[1.6] text-[var(--text-typing)] placeholder:text-[var(--text-quiet-button)] focus:outline-none ${
             expanded ? "border-[var(--input-border-focus)]" : "border-[var(--input-border-idle)]"
           }`}
         />
