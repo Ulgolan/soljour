@@ -1017,6 +1017,14 @@ off main tip `0988cbb` (verified — exact match, no gap since Entry
   entry as the newest (20 AUG) — covering every case the exit condition
   asks for, including the walk-back demo live. Left in place so the
   Vercel preview is seeded too; safe to delete anytime.
+- **Pre-merge codicil (Commander rulings, 2026-08-20, DESIGN GATE):**
+  (iii) `.claude/launch.json` accepted into the repo — uninstructed
+  file surfaced at Tower certification, explicitly adopted rather
+  than stripped. (iv) Hairline entry-separator passed the eye;
+  distinct from in-prose scene break; spacing-only fallback not
+  fired. (v) No-ink fallback wording kept as shipped. DESIGN GATE:
+  PASSED. Tower certification: CERTIFIED at f1718b1, one MINOR
+  finding resolved by ruling (iii).
 
 >> BATON
 The Legible River ships on `lap-5-legible-river` — day-grouped entries
