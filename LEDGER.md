@@ -1189,20 +1189,142 @@ off main tip `52f3b3c` (verified — exact match, no gap since Entry
   and judges the sheet grammar and the "⋯" glyph's discoverability —
   the one part of this lap only his own eye can certify.
 
+### Certification return — the resurrection race, 2026-08-20
+
+**Evidence tier: what the Tower's independent run actually falsified.**
+Its run of THE COLLISION TEST came back red at commit `60701f3` while
+the same test stayed green on the author's machine and in CI. That
+divergence — not a described bug, a *falsified test run* — is the
+whole of what was demonstrated before investigation; everything below
+is the mechanism that run pointed at, verified by reading the code
+rather than assumed from the symptom.
+
+**This is a branch-stage catch, not an incident, and the distinction
+matters:** the branch was never merged, the migration was never
+applied, and nothing in production or the preview ever ran the code
+with the bug in it. Tower certification existing as a gate *before*
+merge, catching a construction flaw *before* it ships, is the gate
+working as designed — logged with the same rigor an incident would
+get, but without the vocabulary of one.
+
+**The mechanism, all four parts, reachability stated honestly:**
+- **M1 — `handleSaveClick` never cancelled the armed debounce timers.**
+  On success it removed the storage keys, then a still-pending timer
+  fired later and resurrected them. **Real-browser reachability:
+  blur-shielded.** Tapping Save blurs the textarea first, and the
+  Lap 5 `flushDraft` (wired to that blur) already cancels both timers
+  as a side effect — so a real user driving a real browser rarely hits
+  this path. The construction was still race-shaped, and the flaky
+  test is direct proof: a test drives events without the blur a real
+  click carries, and found the gap the browser normally papers over.
+- **M2 — the title input had no flush-on-blur at all.** Lap 5 wired
+  the write-through flush to the textarea only, never the title field.
+  **Real-usage reachability: live, not just theoretical.** Any user
+  who blurs out of the title field without saving (clicks elsewhere,
+  switches apps) loses that in-flight title on connection loss or tab
+  close — a direct Data-law (NN#1) gap that has been live since Lap 5
+  shipped this morning, independent of M1 and independent of tests.
+- **M3 — `tests/setup.ts`'s `MemoryStorage` is a singleton for the
+  whole test-file run, never reset between `it` blocks.** This isn't
+  what caused M1, but it is what turned M1 into a *flickering*
+  collision test rather than a reliably-red one: leftover keys from
+  an earlier test's crash-resume path bled into THE COLLISION TEST's
+  starting state, making its failure depend on run order and prior
+  test outcomes rather than firing consistently.
+- **M4 — verified, not a further mechanism.** The edit-cancel path
+  (`handleCancelClick`) already cancelled both timers *before*
+  removing the edit-buffer keys, in the correct order, before this
+  fix cycle touched anything. Checked by reading the code and by a
+  new regression test (`edit-mode cancel also cancels the pending
+  debounce (M4, verified — was already correct)` in
+  `tests/draft-composer.test.tsx`) rather than taken on faith.
+- **A fifth thing found while fixing M1, not separately numbered by
+  the Tower but worth recording here:** THE COLLISION TEST itself used
+  `vi.useFakeTimers({ shouldAdvanceTime: true })`, which lets the fake
+  clock creep forward with real wall time in addition to explicit
+  advances. On a slower or more loaded machine (plausibly the Tower's
+  independent run vs. the author's), that alone is enough for a
+  500ms debounce to fire for real between two `fireEvent` calls that
+  read as adjacent in the source — a second, test-only source of
+  nondeterminism layered on top of M1's real one. Removed in favor of
+  plain fake timers, clock frozen except on explicit
+  `vi.advanceTimersByTime`.
+
+**Fixed by construction, in `components/DraftComposer.tsx`:** a single
+`cancelTimers()` helper (clear both refs, null them) is now the one
+move every "we are done writing to these keys" path takes first —
+`flushDraft` (refactored to call it, no behavior change), the
+`handleSaveClick` success branch (called immediately before the
+`removeItem` pair — this is M1's fix), and `handleCancelClick` (already
+had its own equivalent inline, now shares the same helper). The title
+input's `onBlur` now points at `flushDraft`, exactly like the textarea
+— this is M2's fix, and it means the Lap 5 flush law is *completed*
+here, not patched around: "blur or tab-hide writes through" now holds
+for both fields, not just content, which was always the stated law
+even though the code only ever implemented half of it. No
+cancel-on-unmount was added — that was explicitly weighed and
+rejected, because a pending timer's closure surviving a campaign-switch
+remount (the composer's `key` changes) is load-bearing: it's what lets
+the old campaign's last keystrokes still land in the old campaign's
+storage key after the composer has already swapped to the new one.
+Cancelling on unmount would silently drop that write.
+
+**Fixed by construction, in `tests/setup.ts`:** `beforeEach(() =>
+globalThis.localStorage.clear())` resets the singleton `MemoryStorage`
+before every test in every file — M3's fix. Existing per-file
+`afterEach` clears were left in place (harmless, now redundant
+defense-in-depth, not contradictory).
+
+**Regression coverage added, all in `tests/draft-composer.test.tsx`**
+(new describe block, "resurrection race, fixed by construction"): save
+cancels a pending content debounce (type → save before the debounce
+fires → assert the key stays removed after advancing 500ms); save
+cancels a pending **title-only** debounce (M2's path specifically —
+content flushed first via a real debounce, then only the title is
+mid-type at save time); edit-mode save does the same for the edit
+buffer; edit-mode cancel does the same (M4, now asserted, not just
+read); and title blur now flushes write-through exactly like content
+already did (M2's direct fix, tested the same way the textarea's
+blur-flush was already tested in Lap 5). **THE COLLISION TEST itself**
+(`tests/curation.test.tsx`) had `shouldAdvanceTime` removed and its
+`findByText`/`findByPlaceholderText` calls (which lean on a real
+`setTimeout` internally and hang forever against a frozen fake clock)
+replaced with an explicit microtask-drain for the one real async step
+(the mocked Supabase load) followed by synchronous queries throughout
+— deterministic by construction, not by getting lucky on wall-clock
+speed.
+
+- **Tests: 92 green (87 → 92).** 5 new in `tests/draft-composer.test.tsx`
+  covering M1 (content + title-only), M2, M4, and edit-mode save. `npm
+  run build` and `npm run lint` both clean.
+- **Corroboration (stress, not proof — the construction above is the
+  proof): `npm run test` run 15 times consecutively, 15/15 green, 92/92
+  tests passing every run.**
+- **Scope discipline:** this fix cycle touched only
+  `components/DraftComposer.tsx`, `tests/draft-composer.test.tsx`,
+  `tests/curation.test.tsx`, `tests/setup.ts`, and this ledger entry —
+  `Chronicle.tsx`, the migration, and every other file from this lap's
+  first pass are untouched, per the certification-return instruction.
+
 >> BATON
-Pen and eraser ship on `lap-6-pen-and-eraser`: entry edit with its own
-collision-proof draft buffer sharing Lap 5's debounce/flush machinery,
-entry delete behind a glyph → sheet → confirm, campaign delete behind a
-live-counted confirm with fallback selection, and every read now
-honestly filtered to `deleted_at is null`. 87/87 tests green, build
-clean, lint clean, all four anchors land exactly once, diff scoped to
-exactly the instructed files plus four one-line test-mock retakes.
-Migration SQL (`0003_soft_delete.sql`) is file-only and needs Tower
-certification + Commander-authorized `apply_migration` before the
-preview's deletes/edits do anything but 404 against a missing column —
-**do this first**, everything else in this lap depends on it. Not yet
-pushed, no PR open, no CI run yet, no live Commander-eye pass — all
-owed next, in that order. The christening (queued since Entry #15,
-gated on this lap per ruling (vii)) still waits behind it.
-HARNESS: 87 tests green · `npm run build` clean · `npm run lint` clean
-· last full eval n/a (no AI) · signals n/a
+Pen and eraser ships on `lap-6-pen-and-eraser`, now past a Tower
+certification return: THE COLLISION TEST's flake was a real
+resurrection race in the composer's timer/storage construction (M1,
+blur-shielded in browsers but open in tests) plus a live title-blur
+flush gap (M2, real-usage reachable since Lap 5 shipped) plus test
+pollution that made the symptom flicker instead of firing consistently
+(M3) — all three fixed by construction, M4 verified already-correct,
+and a second test-only nondeterminism source (`shouldAdvanceTime`)
+removed on top. 92/92 tests green (5 new regression tests for the
+mechanism itself), 15/15 consecutive full-suite runs green, build
+clean, lint clean, all four anchors still land exactly once. Migration
+SQL (`0003_soft_delete.sql`, untouched this cycle) is still file-only
+and still needs Tower certification + Commander-authorized
+`apply_migration` before the preview's deletes/edits do anything but
+404 — that gate hasn't moved. Owed next: push this fix to the open PR,
+confirm CI green again, Tower re-certification, then the live
+Commander-eye pass (still blocked on Hands not holding Supabase
+credentials, same as every prior lap). The christening (queued since
+Entry #15, gated on this lap per ruling (vii)) still waits behind it.
+HARNESS: 92 tests green · 15/15 stress runs green · `npm run build`
+clean · `npm run lint` clean · last full eval n/a (no AI) · signals n/a

@@ -151,3 +151,132 @@ describe("DraftComposer — draft buffer (NN#1)", () => {
     expect(window.localStorage.getItem(`${draftKey}:content`)).toBe("the lantern goes out");
   });
 });
+
+describe("DraftComposer — resurrection race, fixed by construction (Lap 6 certification return)", () => {
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+    vi.useRealTimers();
+  });
+
+  it("save cancels a pending content debounce — a stale timer can't resurrect the key after removal", async () => {
+    vi.useFakeTimers();
+    const draftKey = "soljour:draft:test-campaign";
+    const onSave = vi.fn().mockResolvedValue(true);
+    render(<DraftComposer draftKey={draftKey} placeholder={PLACEHOLDER} onSave={onSave} />);
+    const textarea = screen.getByPlaceholderText(PLACEHOLDER);
+
+    // Save fires before the 500ms content debounce — the timer is still armed.
+    fireEvent.change(textarea, { target: { value: "a hasty save" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save entry" }));
+      await Promise.resolve();
+    });
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBeNull();
+
+    // Let the stale timer's original schedule elapse.
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBeNull();
+  });
+
+  it("save cancels a pending TITLE-only debounce too (M2's path) — content already flushed, title still armed", async () => {
+    vi.useFakeTimers();
+    const draftKey = "soljour:draft:test-campaign";
+    const onSave = vi.fn().mockResolvedValue(true);
+    render(<DraftComposer draftKey={draftKey} placeholder={PLACEHOLDER} onSave={onSave} />);
+    const textarea = screen.getByPlaceholderText(PLACEHOLDER);
+
+    fireEvent.change(textarea, { target: { value: "steady content" } });
+    await act(async () => {
+      vi.advanceTimersByTime(500); // content's own debounce fires; contentTimer is already null by save time
+    });
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBe("steady content");
+
+    // Only the title's debounce is still armed when Save fires.
+    fireEvent.change(screen.getByPlaceholderText("TITLE (OPTIONAL)"), {
+      target: { value: "A Title" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save entry" }));
+      await Promise.resolve();
+    });
+    expect(window.localStorage.getItem(`${draftKey}:title`)).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(window.localStorage.getItem(`${draftKey}:title`)).toBeNull();
+  });
+
+  it("edit-mode save cancels the edit buffer's pending debounce too", async () => {
+    vi.useFakeTimers();
+    const draftKey = "soljour:edit:e1";
+    const onSave = vi.fn().mockResolvedValue(true);
+    render(
+      <DraftComposer
+        draftKey={draftKey}
+        placeholder={PLACEHOLDER}
+        onSave={onSave}
+        initialContent="original text"
+        onCancel={vi.fn()}
+      />,
+    );
+    const textarea = screen.getByPlaceholderText(PLACEHOLDER);
+
+    fireEvent.change(textarea, { target: { value: "edited mid-flight" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Save edit" }));
+      await Promise.resolve();
+    });
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBeNull();
+  });
+
+  it("edit-mode cancel also cancels the pending debounce (M4, verified — was already correct)", () => {
+    vi.useFakeTimers();
+    const draftKey = "soljour:edit:e1";
+    const onSave = vi.fn();
+    const onCancel = vi.fn();
+    render(
+      <DraftComposer
+        draftKey={draftKey}
+        placeholder={PLACEHOLDER}
+        onSave={onSave}
+        initialContent="original text"
+        onCancel={onCancel}
+      />,
+    );
+    const textarea = screen.getByPlaceholderText(PLACEHOLDER);
+
+    // Cancel fires before the 500ms content debounce — the timer is still armed.
+    fireEvent.change(textarea, { target: { value: "edited, then abandoned" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBeNull();
+
+    vi.advanceTimersByTime(500);
+    expect(window.localStorage.getItem(`${draftKey}:content`)).toBeNull();
+  });
+
+  it("title blur now flushes write-through, same as content (M2 — the flush law completed, not patched)", () => {
+    vi.useFakeTimers();
+    const draftKey = "soljour:draft:test-campaign";
+    const onSave = vi.fn();
+    render(<DraftComposer draftKey={draftKey} placeholder={PLACEHOLDER} onSave={onSave} />);
+
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "some ink" } });
+    const titleInput = screen.getByPlaceholderText("TITLE (OPTIONAL)");
+    fireEvent.change(titleInput, { target: { value: "a title, mid-type" } });
+    // No vi.advanceTimersByTime — the 500ms title debounce has not fired.
+    expect(window.localStorage.getItem(`${draftKey}:title`)).toBeNull();
+
+    fireEvent.blur(titleInput);
+    expect(window.localStorage.getItem(`${draftKey}:title`)).toBe("a title, mid-type");
+  });
+});

@@ -202,20 +202,37 @@ describe("Entry edit — the collision law (Lap 6)", () => {
   });
 
   it("THE COLLISION TEST: editing an entry never reads or writes the new-entry draft keys", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // No shouldAdvanceTime: the fake clock only moves on an explicit
+    // vi.advanceTimersByTime — with it, the clock also creeps forward
+    // with real wall time, so a slower machine (a CI runner under load)
+    // could let a debounce timer fire for real between two fireEvents
+    // that read as adjacent in the test source. That's what turned this
+    // test flaky on the Tower's independent run while staying green
+    // here: the race was real, the test just wasn't holding the clock
+    // still enough to make it deterministic either way.
+    vi.useFakeTimers();
     fromMock.mockImplementation((table: string) => {
       if (table === "campaigns") return makeChain({ data: [CAMPAIGN] });
       if (table === "entries") return makeTableMock({ dataByCampaignId: { c1: [ENTRY] } })();
       return makeChain({ data: [] });
     });
 
+    // findBy*'s internal wait/poll leans on real setTimeout, which never
+    // fires while the fake clock is frozen and un-advanced — so this test
+    // flushes the initial (Promise-based, not timer-based) data load with
+    // an explicit microtask drain and uses only synchronous queries from
+    // here on, exactly like the other fake-timer tests in this file.
     render(<Chronicle />);
-    await screen.findByText("original text");
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(screen.getByText("original text")).toBeInTheDocument();
 
     // Type a new-entry draft and let it flush.
     const newEntryTextarea = screen.getByPlaceholderText("Continue the chronicle…");
     fireEvent.change(newEntryTextarea, { target: { value: "original new-entry draft" } });
-    await act(async () => {
+    act(() => {
       vi.advanceTimersByTime(500);
     });
     expect(window.localStorage.getItem("soljour:draft:c1:content")).toBe("original new-entry draft");
@@ -223,7 +240,7 @@ describe("Entry edit — the collision law (Lap 6)", () => {
     // Enter edit mode on the existing entry.
     fireEvent.click(screen.getByLabelText("Entry actions"));
     fireEvent.click(screen.getByText("Edit"));
-    const editTextarea = await screen.findByPlaceholderText("Continue the chronicle…");
+    const editTextarea = screen.getByPlaceholderText("Continue the chronicle…");
     expect(editTextarea).toHaveValue("original text");
 
     fireEvent.change(editTextarea, { target: { value: "edited text mid-flight" } });
@@ -244,7 +261,7 @@ describe("Entry edit — the collision law (Lap 6)", () => {
     expect(window.localStorage.getItem("soljour:edit:e1:content")).toBeNull();
     expect(window.localStorage.getItem("soljour:draft:c1:content")).toBe("original new-entry draft");
 
-    const restoredComposer = await screen.findByPlaceholderText("Continue the chronicle…");
+    const restoredComposer = screen.getByPlaceholderText("Continue the chronicle…");
     expect(restoredComposer).toHaveValue("original new-entry draft");
     expect(screen.getByText("original text")).toBeInTheDocument();
   });

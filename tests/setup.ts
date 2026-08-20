@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import { beforeEach } from "vitest";
 
 class MemoryStorage implements Storage {
   private store = new Map<string, string>();
@@ -31,6 +32,15 @@ class MemoryStorage implements Storage {
 Object.defineProperty(globalThis, "localStorage", {
   configurable: true,
   value: new MemoryStorage(),
+});
+
+// The MemoryStorage instance above is a run-wide singleton, not a fresh
+// jsdom per test — without this, a key one test forgot to clean up (or
+// left mid-flight by a timer) leaks into the next test's read, which is
+// exactly what turned a real resurrection race into a flaky collision
+// test rather than a deterministic one.
+beforeEach(() => {
+  globalThis.localStorage.clear();
 });
 
 // jsdom does not implement scrollIntoView.

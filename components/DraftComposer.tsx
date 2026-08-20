@@ -65,13 +65,16 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
     }, DEBOUNCE_MS);
   }
 
-  // Write-through flush (Commander pull, Lap 5): a debounce timer is a bet
-  // that more keystrokes are coming. Blur and tab-hide are exactly the
-  // moments that bet can be wrong — connection loss, browser close, and
-  // backend outage all funnel through one of these two events, so the
-  // pending timer (if any) is cancelled and the current values are
-  // written immediately instead of waiting out the remaining debounce.
-  const flushDraft = useCallback(() => {
+  // Cancels both armed debounce timers without touching storage — the one
+  // move every "we're done writing to these keys" path needs first
+  // (flush, save-success, cancel), so a pending timer can never fire
+  // *after* that path has already decided the keys' final state and
+  // resurrect a stale write on top of it. Deliberately NOT wired to
+  // unmount: the pending-timer closure surviving a campaign-switch
+  // remount (key change) is load-bearing — it's what lets the old
+  // campaign's last keystrokes still land in the old campaign's storage
+  // key after the composer has already swapped to the new one.
+  const cancelTimers = useCallback(() => {
     if (contentTimer.current) {
       clearTimeout(contentTimer.current);
       contentTimer.current = null;
@@ -80,9 +83,20 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
       clearTimeout(titleTimer.current);
       titleTimer.current = null;
     }
+  }, []);
+
+  // Write-through flush (Commander pull, Lap 5; completed here, not just
+  // patched — the law now covers both fields): a debounce timer is a bet
+  // that more keystrokes are coming. Blur and tab-hide are exactly the
+  // moments that bet can be wrong — connection loss, browser close, and
+  // backend outage all funnel through one of these two events, so the
+  // pending timer (if any) is cancelled and the current values are
+  // written immediately instead of waiting out the remaining debounce.
+  const flushDraft = useCallback(() => {
+    cancelTimers();
     window.localStorage.setItem(contentStorageKey(draftKey), content);
     window.localStorage.setItem(titleStorageKey(draftKey), title);
-  }, [content, title, draftKey]);
+  }, [cancelTimers, content, title, draftKey]);
 
   useEffect(() => {
     function handleVisibilityChange() {
@@ -136,6 +150,11 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
     const ok = await onSave(content, title);
     setSaving(false);
     if (ok) {
+      // Cancel BEFORE removing the keys — otherwise a debounce timer
+      // armed by a keystroke just before the save click fires after the
+      // removeItem pair below and resurrects the very keys this branch
+      // just cleared (the mechanism the Tower's run falsified).
+      cancelTimers();
       setContent("");
       setTitle("");
       window.localStorage.removeItem(contentStorageKey(draftKey));
@@ -148,14 +167,7 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
   // while draftKey points at an edit buffer, so there is nothing to
   // restore, only the edit buffer to erase before handing back control.
   function handleCancelClick() {
-    if (contentTimer.current) {
-      clearTimeout(contentTimer.current);
-      contentTimer.current = null;
-    }
-    if (titleTimer.current) {
-      clearTimeout(titleTimer.current);
-      titleTimer.current = null;
-    }
+    cancelTimers();
     window.localStorage.removeItem(contentStorageKey(draftKey));
     window.localStorage.removeItem(titleStorageKey(draftKey));
     onCancel?.();
@@ -201,6 +213,7 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
         <input
           value={title}
           onChange={(e) => handleTitleChange(e.target.value)}
+          onBlur={flushDraft}
           placeholder="TITLE (OPTIONAL)"
           className="border-0 border-b border-[var(--hairline)] bg-transparent px-0 pb-1.5 font-mono text-[11px] uppercase tracking-[.14em] text-[var(--text-quiet-button)] placeholder:text-[var(--text-meta-line)] focus:outline-none"
         />
