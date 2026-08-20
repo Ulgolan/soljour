@@ -12,6 +12,7 @@ function makeChain(result: unknown) {
   chain.order = vi.fn(self);
   chain.limit = vi.fn(self);
   chain.eq = vi.fn(self);
+  chain.is = vi.fn(self);
   chain.insert = vi.fn(self);
   chain.update = vi.fn(self);
   chain.single = vi.fn(self);
@@ -25,6 +26,7 @@ function makeScopedReadChain(dataByCampaignId: Record<string, unknown[]>) {
   let campaignId: string | undefined;
   chain.select = () => chain;
   chain.order = () => chain;
+  chain.is = () => chain;
   chain.eq = (_col: string, val: string) => {
     campaignId = val;
     return chain;

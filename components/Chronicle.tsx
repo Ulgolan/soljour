@@ -31,6 +31,9 @@ export function Chronicle() {
   const [whereYouWereExpanded, setWhereYouWereExpanded] = useState(true);
   const [exportOpen, setExportOpen] = useState(false);
   const [shortcutSheetOpen, setShortcutSheetOpen] = useState(false);
+  const [entrySheetEntryId, setEntrySheetEntryId] = useState<string | null>(null);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [campaignPendingDeleteId, setCampaignPendingDeleteId] = useState<string | null>(null);
   const riverEndRef = useRef<HTMLDivElement>(null);
   const hasScrolledRef = useRef(false);
   const composerRef = useRef<DraftComposerHandle>(null);
@@ -43,6 +46,7 @@ export function Chronicle() {
     supabase
       .from("campaigns")
       .select("id, name, system_label")
+      .is("deleted_at", null)
       .order("created_at", { ascending: true })
       .then(({ data }) => {
         if (!active) return;
@@ -65,6 +69,7 @@ export function Chronicle() {
       .from("entries")
       .select("id, campaign_id, title, content, created_at")
       .eq("campaign_id", campaign.id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: true })
       .then(({ data }) => {
         if (active && data) setEntries(data);
@@ -110,6 +115,26 @@ export function Chronicle() {
     }
   }
 
+  async function handleDeleteCampaign(campaignId: string) {
+    const { error } = await supabase
+      .from("campaigns")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", campaignId);
+    if (error) return;
+    const remaining = (campaigns ?? []).filter((c) => c.id !== campaignId);
+    setCampaigns(remaining);
+    setCampaignPendingDeleteId(null);
+    setCampaignPanelOpen(false);
+    if (campaignId === selectedCampaignId) {
+      if (remaining.length > 0) {
+        selectCampaign(remaining[remaining.length - 1].id);
+      } else {
+        setSelectedCampaignId(null);
+        window.localStorage.removeItem(SELECTED_CAMPAIGN_KEY);
+      }
+    }
+  }
+
   async function handleSave(content: string, title: string): Promise<boolean> {
     if (!campaign) return false;
     const { data, error } = await supabase
@@ -124,6 +149,36 @@ export function Chronicle() {
     setEntries((prev) => [...prev, data]);
     setSyncState("synced");
     return true;
+  }
+
+  // Edit save: explicit updated_at (schema has no touch trigger), never
+  // created_at — the entry keeps its day and river position. Clearing
+  // editingEntryId here (not in the composer) is what swaps the bottom
+  // composer back to new-entry mode on success.
+  async function handleEditSave(entryId: string, content: string, title: string): Promise<boolean> {
+    const { data, error } = await supabase
+      .from("entries")
+      .update({ content, title: title.trim() || null, updated_at: new Date().toISOString() })
+      .eq("id", entryId)
+      .select("id, campaign_id, title, content, created_at")
+      .single();
+    if (error || !data) return false;
+    setEntries((prev) => prev.map((e) => (e.id === entryId ? data : e)));
+    setEditingEntryId(null);
+    return true;
+  }
+
+  function handleCancelEdit() {
+    setEditingEntryId(null);
+  }
+
+  async function handleDeleteEntry(id: string) {
+    setEntrySheetEntryId(null);
+    const { error } = await supabase
+      .from("entries")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", id);
+    if (!error) setEntries((prev) => prev.filter((e) => e.id !== id));
   }
 
   async function handleAddThread(text: string) {
@@ -192,6 +247,10 @@ export function Chronicle() {
   // fetch for the newly selected campaign lands.
   const visibleEntries = entries.filter((e) => e.campaign_id === campaign.id);
   const visibleThreads = threads.filter((t) => t.campaign_id === campaign.id);
+  const editingEntry = editingEntryId ? (visibleEntries.find((e) => e.id === editingEntryId) ?? null) : null;
+  const entrySheetEntry = entrySheetEntryId
+    ? (visibleEntries.find((e) => e.id === entrySheetEntryId) ?? null)
+    : null;
 
   const isEmpty = visibleEntries.length === 0 && visibleThreads.length === 0;
   const lastInkEntry = lastEntryWithInk(visibleEntries);
@@ -255,7 +314,7 @@ export function Chronicle() {
               <Fragment key={entry.id}>
                 {dayLabel && <DayHeader label={dayLabel} />}
                 {hairlineBeforeEntryId.has(entry.id) && <DayHairline />}
-                <EntryCard entry={entry} />
+                <EntryCard entry={entry} onOpenActions={setEntrySheetEntryId} />
               </Fragment>
             );
           })
@@ -264,13 +323,26 @@ export function Chronicle() {
       </div>
 
       <div className="sticky bottom-0 flex flex-col gap-2 border-t border-[var(--structural-border)] bg-[var(--surface)] px-5 py-2.5 lg:col-start-2 lg:row-start-3 lg:mx-auto lg:w-full lg:max-w-[68ch] lg:rounded-xl lg:border">
-        <DraftComposer
-          key={campaign.id}
-          ref={composerRef}
-          draftKey={`soljour:draft:${campaign.id}`}
-          placeholder={placeholder}
-          onSave={handleSave}
-        />
+        {editingEntry ? (
+          <DraftComposer
+            key={`edit:${editingEntry.id}`}
+            ref={composerRef}
+            draftKey={`soljour:edit:${editingEntry.id}`}
+            placeholder={placeholder}
+            initialContent={editingEntry.content}
+            initialTitle={editingEntry.title ?? undefined}
+            onSave={(content, title) => handleEditSave(editingEntry.id, content, title)}
+            onCancel={handleCancelEdit}
+          />
+        ) : (
+          <DraftComposer
+            key={campaign.id}
+            ref={composerRef}
+            draftKey={`soljour:draft:${campaign.id}`}
+            placeholder={placeholder}
+            onSave={handleSave}
+          />
+        )}
         <div className="flex items-center justify-between">
           <SyncLine state={syncState} />
           <button
@@ -303,7 +375,28 @@ export function Chronicle() {
           selectedId={campaign.id}
           onSelect={selectCampaign}
           onCreate={handleCreateCampaign}
+          onDeleteRequest={setCampaignPendingDeleteId}
           onClose={() => setCampaignPanelOpen(false)}
+        />
+      )}
+
+      {entrySheetEntry && (
+        <EntrySheet
+          entry={entrySheetEntry}
+          onEdit={(id) => {
+            setEditingEntryId(id);
+            setEntrySheetEntryId(null);
+          }}
+          onDelete={handleDeleteEntry}
+          onClose={() => setEntrySheetEntryId(null)}
+        />
+      )}
+
+      {campaignPendingDeleteId && (
+        <CampaignDeleteConfirm
+          campaign={campaigns.find((c) => c.id === campaignPendingDeleteId)!}
+          onConfirm={() => handleDeleteCampaign(campaignPendingDeleteId)}
+          onClose={() => setCampaignPendingDeleteId(null)}
         />
       )}
     </div>
@@ -476,16 +569,111 @@ function WhereYouWere({
  * entry shows no label at all and relies on the day-group hairline for
  * separation instead.
  */
-function EntryCard({ entry }: { entry: Entry }) {
+function EntryCard({ entry, onOpenActions }: { entry: Entry; onOpenActions: (id: string) => void }) {
   return (
-    <article className="flex flex-col gap-2">
+    <article className="relative flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={() => onOpenActions(entry.id)}
+        aria-label="Entry actions"
+        className="absolute right-0 top-0 flex h-7 w-7 items-center justify-center font-mono text-[13px] text-[var(--text-meta-line)]"
+      >
+        ⋯
+      </button>
       {entry.title && (
-        <div className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-meta-line)]">
+        <div className="pr-8 font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-meta-line)]">
           {entry.title}
         </div>
       )}
       <Prose content={entry.content} />
     </article>
+  );
+}
+
+/**
+ * The glyph is the only tap target on an entry — the reading surface
+ * (title, Prose) stays inert by design. EDIT / DELETE / cancel, same
+ * sheet grammar as export/campaigns; DELETE steps to a confirm inside
+ * this same sheet rather than opening a second one.
+ */
+function EntrySheet({
+  entry,
+  onEdit,
+  onDelete,
+  onClose,
+}: {
+  entry: Entry;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--sheet-scrim)]"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-t-[18px] bg-[var(--nav-track)] px-5 py-6"
+      >
+        {confirmingDelete ? (
+          <>
+            <div className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-secondary-prose)]">
+              Delete entry
+            </div>
+            <p className="mt-2 font-serif text-[14.5px] leading-[1.62] text-[var(--text-secondary-prose)]">
+              This entry leaves the river.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(false)}
+                className="flex-1 rounded-xl bg-[var(--input-fill)] py-3 text-center font-mono text-[11px] uppercase tracking-[.14em] text-[var(--text-quiet-button)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(entry.id)}
+                className="flex-1 rounded-xl bg-[var(--accent)] py-3 text-center font-mono text-[11px] uppercase tracking-[.14em] text-[var(--canvas)]"
+              >
+                Confirm delete
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-secondary-prose)]">
+              Entry
+            </div>
+            <div className="mt-3 flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => onEdit(entry.id)}
+                className="rounded-lg px-2.5 py-2.5 text-left font-mono text-[12px] uppercase tracking-[.12em] text-[var(--text-primary)]"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="rounded-lg px-2.5 py-2.5 text-left font-mono text-[12px] uppercase tracking-[.12em] text-[var(--text-primary)]"
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg px-2.5 py-2.5 text-left font-mono text-[12px] uppercase tracking-[.12em] text-[var(--text-quiet-button)]"
+              >
+                Cancel
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -515,12 +703,14 @@ function CampaignPanel({
   selectedId,
   onSelect,
   onCreate,
+  onDeleteRequest,
   onClose,
 }: {
   campaigns: Campaign[];
   selectedId: string;
   onSelect: (id: string) => void;
   onCreate: (name: string, systemLabel: string) => void;
+  onDeleteRequest: (id: string) => void;
   onClose: () => void;
 }) {
   return (
@@ -537,25 +727,111 @@ function CampaignPanel({
         </div>
         <div className="mt-3 flex flex-col gap-1">
           {campaigns.map((c) => (
-            <button
+            <div
               key={c.id}
-              type="button"
-              onClick={() => onSelect(c.id)}
-              className={`flex flex-col rounded-lg px-2.5 py-2 text-left ${
+              className={`flex items-center rounded-lg px-2.5 py-2 ${
                 c.id === selectedId ? "bg-[var(--active-pill)]" : ""
               }`}
             >
-              <span className="font-serif text-[15px] text-[var(--text-primary)]">{c.name}</span>
-              {c.system_label && (
-                <span className="font-mono text-[9.5px] uppercase tracking-[.14em] text-[var(--text-system-label)]">
-                  {c.system_label}
-                </span>
-              )}
-            </button>
+              <button type="button" onClick={() => onSelect(c.id)} className="flex flex-1 flex-col text-left">
+                <span className="font-serif text-[15px] text-[var(--text-primary)]">{c.name}</span>
+                {c.system_label && (
+                  <span className="font-mono text-[9.5px] uppercase tracking-[.14em] text-[var(--text-system-label)]">
+                    {c.system_label}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => onDeleteRequest(c.id)}
+                aria-label={`Delete ${c.name}`}
+                className="shrink-0 pl-2 font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-quiet-button)]"
+              >
+                Delete
+              </button>
+            </div>
           ))}
         </div>
         <div className="mt-4 border-t border-[var(--hairline)] pt-2">
           <CampaignForm onCreate={onCreate} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Counts are fetched live for the campaign being deleted, never read from
+ * `entries`/`threads` state — that state only ever covers the currently
+ * selected campaign, and the campaign being deleted here need not be it.
+ */
+function CampaignDeleteConfirm({
+  campaign,
+  onConfirm,
+  onClose,
+}: {
+  campaign: Campaign;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const [counts, setCounts] = useState<{ entries: number; threads: number } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      supabase
+        .from("entries")
+        .select("id", { count: "exact", head: true })
+        .eq("campaign_id", campaign.id)
+        .is("deleted_at", null),
+      supabase.from("threads").select("id", { count: "exact", head: true }).eq("campaign_id", campaign.id),
+    ]).then(([entriesRes, threadsRes]) => {
+      if (!active) return;
+      setCounts({ entries: entriesRes.count ?? 0, threads: threadsRes.count ?? 0 });
+    });
+    return () => {
+      active = false;
+    };
+  }, [campaign.id]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-[var(--sheet-scrim)]"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-t-[18px] bg-[var(--nav-track)] px-5 py-6"
+      >
+        <div className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-secondary-prose)]">
+          Delete campaign
+        </div>
+        <h2 className="mt-1 font-serif text-[17px] leading-[1.35] text-[var(--text-primary)]">
+          {campaign.name}
+        </h2>
+        <p className="mt-2 font-serif text-[14.5px] leading-[1.62] text-[var(--text-secondary-prose)]">
+          {counts
+            ? `${counts.entries} ${counts.entries === 1 ? "entry" : "entries"} and ${counts.threads} ${
+                counts.threads === 1 ? "thread" : "threads"
+              } leave the journal with it.`
+            : "Counting…"}
+        </p>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-xl bg-[var(--input-fill)] py-3 text-center font-mono text-[11px] uppercase tracking-[.14em] text-[var(--text-quiet-button)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={!counts}
+            className="flex-1 rounded-xl bg-[var(--accent)] py-3 text-center font-mono text-[11px] uppercase tracking-[.14em] text-[var(--canvas)] disabled:opacity-50"
+          >
+            Confirm delete
+          </button>
         </div>
       </div>
     </div>

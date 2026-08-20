@@ -10,6 +10,7 @@ function makeChain(result: unknown) {
   chain.order = vi.fn(self);
   chain.limit = vi.fn(self);
   chain.eq = vi.fn(self);
+  chain.is = vi.fn(self);
   chain.insert = vi.fn(self);
   chain.update = vi.fn(self);
   chain.single = vi.fn(self);

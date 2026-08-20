@@ -38,12 +38,17 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
   draftKey: string;
   placeholder: string;
   onSave: (content: string, title: string) => Promise<boolean>;
-}>(function DraftComposer({ draftKey, placeholder, onSave }, ref) {
+  /** Edit mode only: fallback seed when no edit buffer exists yet for this entry. */
+  initialContent?: string;
+  initialTitle?: string;
+  /** Presence marks edit mode — renders the Cancel affordance and clears the edit buffer on cancel. */
+  onCancel?: () => void;
+}>(function DraftComposer({ draftKey, placeholder, onSave, initialContent, initialTitle, onCancel }, ref) {
   const [content, setContent] = useState(
-    () => window.localStorage.getItem(contentStorageKey(draftKey)) ?? "",
+    () => window.localStorage.getItem(contentStorageKey(draftKey)) ?? initialContent ?? "",
   );
   const [title, setTitle] = useState(
-    () => window.localStorage.getItem(titleStorageKey(draftKey)) ?? "",
+    () => window.localStorage.getItem(titleStorageKey(draftKey)) ?? initialTitle ?? "",
   );
   const [focused, setFocused] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -138,6 +143,24 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
     }
   }
 
+  // Cancel (edit mode only): clears the edit buffer, not the new-entry
+  // draft — the new-entry draft keys are never touched by this component
+  // while draftKey points at an edit buffer, so there is nothing to
+  // restore, only the edit buffer to erase before handing back control.
+  function handleCancelClick() {
+    if (contentTimer.current) {
+      clearTimeout(contentTimer.current);
+      contentTimer.current = null;
+    }
+    if (titleTimer.current) {
+      clearTimeout(titleTimer.current);
+      titleTimer.current = null;
+    }
+    window.localStorage.removeItem(contentStorageKey(draftKey));
+    window.localStorage.removeItem(titleStorageKey(draftKey));
+    onCancel?.();
+  }
+
   const expanded = focused || content.length > 0;
   const canSave = content.trim().length > 0 && !saving;
 
@@ -160,6 +183,20 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
 
   return (
     <div className="flex flex-col gap-2">
+      {onCancel && (
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-meta-line)]">
+            Editing entry
+          </span>
+          <button
+            type="button"
+            onClick={handleCancelClick}
+            className="font-mono text-[10px] uppercase tracking-[.14em] text-[var(--text-quiet-button)]"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
       {expanded && (
         <input
           value={title}
@@ -188,7 +225,7 @@ export const DraftComposer = forwardRef<DraftComposerHandle, {
           type="button"
           onClick={handleSaveClick}
           disabled={!canSave}
-          aria-label="Save entry"
+          aria-label={onCancel ? "Save edit" : "Save entry"}
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg ${
             canSave
               ? "bg-[var(--accent)] text-[var(--canvas)]"
