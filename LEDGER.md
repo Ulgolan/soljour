@@ -1305,6 +1305,15 @@ speed.
   `tests/curation.test.tsx`, `tests/setup.ts`, and this ledger entry —
   `Chronicle.tsx`, the migration, and every other file from this lap's
   first pass are untouched, per the certification-return instruction.
+- **Eye-pass codicil (Commander rulings, 2026-08-20, DESIGN GATE):**
+  (viii) Live preview pass on the full curation lap: edit flow,
+  collision net, entry delete, campaign delete with honest counts —
+  PASSED as shipped. One correction ruled: the entry-actions glyph
+  read too quiet at 13px — resized to 20px with the tap target grown
+  to 44px (the one-handed mobile minimum). Color and position
+  unchanged; the titled-entry label's right padding grew `pr-8` →
+  `pr-12` to clear the larger box, nothing else moved. DESIGN GATE:
+  PASSED with the resize applied.
 
 >> BATON
 Pen and eraser ships on `lap-6-pen-and-eraser`, now past a Tower
