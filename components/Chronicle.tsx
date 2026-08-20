@@ -576,7 +576,7 @@ function EntryCard({ entry, onOpenActions }: { entry: Entry; onOpenActions: (id:
         type="button"
         onClick={() => onOpenActions(entry.id)}
         aria-label="Entry actions"
-        className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center font-mono text-[20px] text-[var(--text-meta-line)]"
+        className="absolute -right-3 top-0 flex h-11 w-11 items-center justify-center font-mono text-[20px] text-[var(--text-meta-line)]"
       >
         ⋯
       </button>

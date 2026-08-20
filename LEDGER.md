@@ -1308,12 +1308,22 @@ speed.
 - **Eye-pass codicil (Commander rulings, 2026-08-20, DESIGN GATE):**
   (viii) Live preview pass on the full curation lap: edit flow,
   collision net, entry delete, campaign delete with honest counts —
-  PASSED as shipped. One correction ruled: the entry-actions glyph
-  read too quiet at 13px — resized to 20px with the tap target grown
-  to 44px (the one-handed mobile minimum). Color and position
-  unchanged; the titled-entry label's right padding grew `pr-8` →
-  `pr-12` to clear the larger box, nothing else moved. DESIGN GATE:
-  PASSED with the resize applied.
+  PASSED as shipped. Two corrections ruled, both to the entry-actions
+  glyph: size confirmed at 20px (up from a too-quiet 13px), tap target
+  grown to 44px (the one-handed mobile minimum) — then, once the
+  enlarged 44px box was found to sink the glyph mid-paragraph (its
+  vertical center landing well below the first line's), placement was
+  corrected: the dots are now anchored to the entry's first line
+  (title line when titled, first prose or pencil line otherwise) —
+  `top-0` rather than a further negative offset, since measurement
+  against all four cases (titled, untitled one-liner, untitled
+  two-line paragraph, pencil-block-opening) showed `top-0` holding the
+  glyph within ~4px of true line-one center in every case, the
+  tightest fit of the offsets tried. The hit area extends outward via
+  `-right-3` only, never inward over the text; color unchanged. The
+  titled-entry label's right padding stays `pr-12` (still needed to
+  clear the box at this horizontal offset). DESIGN GATE: PASSED with
+  both corrections applied.
 
 >> BATON
 Pen and eraser ships on `lap-6-pen-and-eraser`, now past a Tower
